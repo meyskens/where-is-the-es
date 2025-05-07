@@ -25,5 +25,6 @@ type Stop struct {
 	RealArrivalTime   time.Time
 	RealDepartureTime time.Time
 
-	NextDay bool
+	NextDay   bool
+	Cancelled bool
 }
