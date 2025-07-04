@@ -13,6 +13,7 @@ const vehicleTypeToImage: Record<string, string> = {
   Locomotive: '/images/186-a.gif',
   Sleeper: '/images/WLABmz-7070-b.gif',
   Couchette: '/images/Bvcmz248-euro-a.gif',
+  BikeCoushette: '/images/BDcm-a.gif',
   default: '/images/Bvcmz248-euro-b.gif',
 };
 
