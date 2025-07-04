@@ -9,6 +9,7 @@ const (
 	VehicleTypeSleeper
 	VehicleTypeBikeCouchette
 	VehicleTypeBikeBistro
+	VehicleTypeSeats
 )
 
 func (v VehicleType) String() string {
@@ -23,6 +24,8 @@ func (v VehicleType) String() string {
 		return "Bike Couchette"
 	case VehicleTypeBikeBistro:
 		return "Bike Bistro"
+	case VehicleTypeSeats:
+		return "Seats"
 	default:
 		return "Unknown"
 	}
