@@ -116,15 +116,20 @@ func parseVehicle(z *html.Tokenizer) (traindata.VehicleType, string, error) {
 					vehicleType = traindata.VehicleTypeLocomotive
 					vehicleNumber = "LOC"
 				case "Couchette":
+				case "Classic":
 					vehicleType = traindata.VehicleTypeCouchette
 				case "Sleeper":
+				case "Comfort":
 					vehicleType = traindata.VehicleTypeSleeper
 				case "Couchette + bikes":
+				case "Classic + bikes":
 					vehicleType = traindata.VehicleTypeBikeCouchette
 				case "Bistro":
 					vehicleType = traindata.VehicleTypeBikeBistro
 				case "Seats":
 				case "Seats + bikes":
+				case "Budget":
+				case "Budget + bikes":
 					vehicleType = traindata.VehicleTypeSeats
 
 				}
