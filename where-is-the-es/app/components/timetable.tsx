@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { apiService, type TimetableResponse, type Stop } from "~/service/api";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Clock, MapPin, Calendar, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Clock, MapPin, Calendar, ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
 
 interface TimetableProps {
     trainNumber: string;
@@ -154,6 +154,10 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
                             Running
                         </span>
                     )}
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Real Time coming soon
+                    </span>
                 </div>
             </CardHeader>
             <div className="flex justify-center">
