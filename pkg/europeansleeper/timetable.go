@@ -256,6 +256,12 @@ func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error)
 		return nil, err
 	}
 
+	// Load Amsterdam timezone
+	amsterdamTz, err := time.LoadLocation("Europe/Amsterdam")
+	if err != nil {
+		return nil, err
+	}
+
 	for i := 0; i < len(tt.Stops); i++ {
 		// set the dates for arrival and departure times to the given date
 		// if next day, set the date to the next day
@@ -266,19 +272,19 @@ func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error)
 			targetDate = date
 		}
 
-		// Combine the date with the parsed time (hour and minute)
+		// Combine the date with the parsed time (hour and minute) in Amsterdam timezone
 		if !tt.Stops[i].ArrivalTime.IsZero() {
 			tt.Stops[i].ArrivalTime = time.Date(
 				targetDate.Year(), targetDate.Month(), targetDate.Day(),
 				tt.Stops[i].ArrivalTime.Hour(), tt.Stops[i].ArrivalTime.Minute(), 0, 0,
-				targetDate.Location(),
+				amsterdamTz,
 			)
 		}
 
 		tt.Stops[i].DepartureTime = time.Date(
 			targetDate.Year(), targetDate.Month(), targetDate.Day(),
 			tt.Stops[i].DepartureTime.Hour(), tt.Stops[i].DepartureTime.Minute(), 0, 0,
-			targetDate.Location(),
+			amsterdamTz,
 		)
 	}
 
