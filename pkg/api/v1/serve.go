@@ -58,12 +58,26 @@ func (a *APIV1) Register(e *echo.Echo) {
 	})
 
 	e.GET("/api/v1/timetable/:date/:number", func(c echo.Context) error {
-		date := c.Param("date")
+		dateParam := c.Param("date")
 		number := c.Param("number")
 
-		service := Service{
-			TrainNumber: number,
-			Date:        date,
+		var service Service
+
+		if dateParam == "next" {
+			// Find the next available departure for this train
+			nextDate, found := a.findNextDeparture(number)
+			if !found {
+				return c.String(404, "No upcoming departures found for this train")
+			}
+			service = Service{
+				TrainNumber: number,
+				Date:        nextDate,
+			}
+		} else {
+			service = Service{
+				TrainNumber: number,
+				Date:        dateParam,
+			}
 		}
 
 		tt, ok := a.timetableCache[service]
@@ -85,6 +99,36 @@ func contains(s []time.Weekday, w time.Weekday) bool {
 		}
 	}
 	return false
+}
+
+func (a *APIV1) findNextDeparture(trainNumber string) (string, bool) {
+	// Check if this train number exists in the European Sleeper system
+	trainDays, exists := europeansleeper.TrainDays[trainNumber]
+	if !exists {
+		return "", false
+	}
+
+	// Start searching from yesterday to cover any potential edge cases
+	// where "next" might actually be yesterday or today depending on current time
+	for i := -1; i <= 14; i++ { // Search up to 2 weeks ahead
+		checkDate := time.Now().AddDate(0, 0, i)
+
+		// Check if this train runs on this day of the week
+		if contains(trainDays, checkDate.Weekday()) {
+			dateStr := checkDate.Format("2006-01-02")
+			service := Service{
+				TrainNumber: trainNumber,
+				Date:        dateStr,
+			}
+
+			// Check if we have this service in our cache
+			if _, exists := a.timetableCache[service]; exists {
+				return dateStr, true
+			}
+		}
+	}
+
+	return "", false
 }
 
 func (a *APIV1) refreshCache() {

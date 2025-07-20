@@ -282,6 +282,14 @@ func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error)
 		)
 	}
 
+	// the last station the departure time is the arrival time
+	if len(tt.Stops) > 0 {
+		tt.Stops[len(tt.Stops)-1].ArrivalTime = tt.Stops[len(tt.Stops)-1].DepartureTime
+		tt.Stops[len(tt.Stops)-1].DepartureTime = time.Time{}
+	}
+
+	tt.Date = date.Truncate(24 * time.Hour) // Set the date of the trip to the given date
+
 	return tt, nil
 }
 

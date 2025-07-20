@@ -2,6 +2,7 @@ import TrainPicker from "~/components/trainpicker";
 import type { Route } from "./+types/home";
 import { useState } from "react";
 import { TrainComposition } from "~/components/composition";
+import { TrainTimetable } from "~/components/timetable";
 import { Train } from "lucide-react";
 
 export function meta({}: Route.MetaArgs) {
@@ -25,6 +26,8 @@ export default function Home() {
     <TrainPicker onSelectTrain={handleTrainSelect} />
     <div className="m-4"/>
     <TrainComposition trainNumber={selectedTrain} />
+    <div className="m-4"/>
+    <TrainTimetable trainNumber={selectedTrain} />
     </>
   );
 }
