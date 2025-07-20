@@ -251,7 +251,38 @@ func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error)
 	}
 	defer resp.Body.Close()
 
-	return parseTimetable(trainNumber, resp.Body)
+	tt, err := parseTimetable(trainNumber, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(tt.Stops); i++ {
+		// set the dates for arrival and departure times to the given date
+		// if next day, set the date to the next day
+		var targetDate time.Time
+		if tt.Stops[i].NextDay {
+			targetDate = date.AddDate(0, 0, 1) // next day
+		} else {
+			targetDate = date
+		}
+
+		// Combine the date with the parsed time (hour and minute)
+		if !tt.Stops[i].ArrivalTime.IsZero() {
+			tt.Stops[i].ArrivalTime = time.Date(
+				targetDate.Year(), targetDate.Month(), targetDate.Day(),
+				tt.Stops[i].ArrivalTime.Hour(), tt.Stops[i].ArrivalTime.Minute(), 0, 0,
+				targetDate.Location(),
+			)
+		}
+
+		tt.Stops[i].DepartureTime = time.Date(
+			targetDate.Year(), targetDate.Month(), targetDate.Day(),
+			tt.Stops[i].DepartureTime.Hour(), tt.Stops[i].DepartureTime.Minute(), 0, 0,
+			targetDate.Location(),
+		)
+	}
+
+	return tt, nil
 }
 
 func parseTimetable(trainNumber string, body io.Reader) (*traindata.Trip, error) {
