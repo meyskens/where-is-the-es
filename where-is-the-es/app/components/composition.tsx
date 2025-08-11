@@ -10,7 +10,7 @@ interface TrainCompositionProps {
 }
 
 const vehicleTypeToImage: Record<string, string> = {
-  Locomotive: '/images/186-a.gif',
+  Locomotive: '/images/186.png',
   Sleeper: '/images/WLABmz-7070-b.gif',
   Couchette: '/images/Bvcmz248-euro-a.gif',
   Seats: '/images/Bm-euro-b.gif',
