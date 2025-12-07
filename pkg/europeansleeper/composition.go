@@ -109,31 +109,30 @@ func parseVehicle(z *html.Tokenizer) (traindata.VehicleType, string, error) {
 				z.Next()
 				vehicleNumber = string(z.Text())
 			}
-			if t.Data == "span" {
+			isClassText := false
+			for _, a := range t.Attr {
+				if a.Key == "class" && a.Val == "text-xs" {
+					isClassText = true
+					break
+				}
+			}
+			if t.Data == "span" && isClassText {
 				z.Next()
-				switch string(z.Text()) {
+				text := string(z.Text())
+				switch text {
 				case "Locomotive":
 					vehicleType = traindata.VehicleTypeLocomotive
 					vehicleNumber = "LOC"
-				case "Couchette":
-				case "Classic":
-				case "Comfort Standard":
+				case "Couchette", "Classic", "Comfort Standard":
 					vehicleType = traindata.VehicleTypeCouchette
-				case "Sleeper":
-				case "Comfort":
-				case "Comfort Plus":
+				case "Sleeper", "Comfort", "Comfort Plus":
 					vehicleType = traindata.VehicleTypeSleeper
-				case "Couchette + bikes":
-				case "Classic + bikes":
+				case "Couchette + bikes", "Classic + bikes":
 					vehicleType = traindata.VehicleTypeBikeCouchette
 				case "Bistro":
 					vehicleType = traindata.VehicleTypeBikeBistro
-				case "Seats":
-				case "Seats + bikes":
-				case "Budget":
-				case "Budget + bikes":
+				case "Seats", "Seats + bikes", "Budget", "Budget + bikes":
 					vehicleType = traindata.VehicleTypeSeats
-
 				}
 			}
 		}
