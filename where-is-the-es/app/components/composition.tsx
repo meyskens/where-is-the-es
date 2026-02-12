@@ -10,12 +10,12 @@ interface TrainCompositionProps {
 }
 
 const vehicleTypeToImage: Record<string, string> = {
-  Locomotive: '/images/186.png',
-  Sleeper: '/images/WLABmz-7070-b.gif',
-  Couchette: '/images/Bvcmz248-euro-a.gif',
+  Locomotive: '/images/186.webp',
+  Sleeper: '/images/WLABmz-7070-b.webp',
+  Couchette: '/images/Bvcmz248-euro-a.webp',
   Seats: '/images/Bm-euro-b.gif',
-  "Bike Couchette": '/images/BDcm-a.gif',
-  default: '/images/Bvcmz248-euro-b.gif',
+  "Bike Couchette": '/images/BDcm-a.webp',
+  default: '/images/Bvcmz248-euro-b.webp',
 };
 
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
@@ -89,7 +89,7 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
                 <img 
                   src={getVehicleImage(vehicle)} 
                   alt={vehicle.type}
-                  style={vehicle.type == "Locomotive" ? { width: '189px', height: '58px' } : { width: 'auto', height: '40px' }}
+                  style={vehicle.type == "Locomotive" ? { width: '189px', height: '58px' } : { width: 'auto', height: '41px' }}
                 />
               </div>
               <div className="text-center mt-2">
