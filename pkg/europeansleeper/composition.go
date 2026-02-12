@@ -2,16 +2,19 @@ package europeansleeper
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 	"golang.org/x/net/html"
 )
 
-func GetComposition(trainNumber string) (traindata.Composition, error) {
+func GetComposition(trainNumber string, tcURL string) (traindata.Composition, error) {
 	// get https://europeansleeper.eu/train-composition
 
 	resp, err := http.Get("https://europeansleeper.eu/train-composition")
@@ -31,7 +34,16 @@ func GetComposition(trainNumber string) (traindata.Composition, error) {
 		return traindata.Composition{}, err
 	}
 
-	return parseComposition(data, trainNumber)
+	composition, err := parseComposition(data, trainNumber)
+	if err != nil {
+		return composition, err
+	}
+
+	if tcURL != "" {
+		composition = enhanceCompositionData(tcURL, composition, trainNumber)
+	}
+
+	return composition, nil
 }
 
 func parseComposition(data []byte, trainNumber string) (traindata.Composition, error) {
@@ -145,4 +157,73 @@ func parseVehicle(z *html.Tokenizer) (traindata.VehicleType, string, error) {
 	}
 
 	return vehicleType, vehicleNumber, nil
+}
+
+type uicOrder struct {
+	UICNumber string
+	Order     int
+}
+
+func enhanceCompositionData(tcURL string, composition traindata.Composition, trainNum string) traindata.Composition {
+	resp, err := http.Get(tcURL)
+	if err != nil {
+		return composition
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return composition
+	}
+
+	tc := TCResponse{}
+	err = json.Unmarshal(data, &tc)
+	if err != nil {
+		return composition
+	}
+
+	if len(tc.Services) < 1 {
+		fmt.Println("No services in TC")
+		return composition
+	}
+
+	svc := tc.Services[0]
+
+	if svc.TrainNumber != "ES"+trainNum {
+		return composition
+	}
+
+	uicNum := map[int]string{}
+	uicList := []uicOrder{}
+	for _, carriage := range svc.Composition {
+		num := 0
+		fNum, isFloat := carriage.Number.(float64)
+		iNum, isInt := carriage.Number.(int)
+		if isFloat {
+			num = int(fNum)
+		} else if isInt {
+			num = iNum
+		}
+
+		if num == 0 {
+			continue
+		}
+
+		uicNum[num] = carriage.Carriage.UICNumber
+		uicList = append(uicList, uicOrder{
+			UICNumber: carriage.Carriage.UICNumber,
+			Order:     carriage.CarriageOrder,
+		})
+	}
+
+	composition.UICNumbers = uicNum
+
+	slices.SortFunc(uicList, func(a, b uicOrder) int {
+		return a.Order - b.Order
+	})
+	uicNums := []string{}
+	for _, n := range uicList {
+		uicNums = append(uicNums, n.UICNumber)
+	}
+	composition.UICNumbersOnOrder = uicNums
+
+	return composition
 }

@@ -25,6 +25,7 @@ func init() {
 type serveCmdOptions struct {
 	BindAddr string
 	Port     int
+	TCURL    string
 }
 
 // NewServeCmd generates the `serve` command
@@ -39,6 +40,7 @@ func NewServeCmd() *cobra.Command {
 	}
 	c.Flags().StringVarP(&s.BindAddr, "bind-address", "b", "0.0.0.0", "address to bind port to")
 	c.Flags().IntVarP(&s.Port, "port", "p", 8080, "Port to listen on")
+	c.Flags().StringVarP(&s.TCURL, "tc-url", "t", "", "address of API with more accurate composition")
 
 	return c
 }
@@ -58,7 +60,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New()
+	v1 := apiv1.New(s.TCURL)
 	v1.Register(e)
 
 	// Serve frontend static files

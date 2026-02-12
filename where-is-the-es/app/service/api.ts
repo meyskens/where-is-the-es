@@ -1,6 +1,7 @@
 export interface Vehicle {
     type: string;
     number: string;
+    uicNumber: string;
 }
 
 export interface CompositionResponse {

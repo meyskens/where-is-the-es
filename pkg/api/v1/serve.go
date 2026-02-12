@@ -21,13 +21,16 @@ type APIV1 struct {
 	refreshTimer *time.Ticker
 
 	initDone bool
+
+	tcURL string
 }
 
-func New() *APIV1 {
+func New(tcURL string) *APIV1 {
 	return &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
 		refreshTimer:     time.NewTicker(1 * time.Minute),
+		tcURL:            tcURL,
 	}
 }
 
@@ -133,7 +136,7 @@ func (a *APIV1) findNextDeparture(trainNumber string) (string, bool) {
 
 func (a *APIV1) refreshCache() {
 	for _, train := range europeansleeper.Trains {
-		composition, err := europeansleeper.GetComposition(train)
+		composition, err := europeansleeper.GetComposition(train, a.tcURL)
 		if err != nil {
 			log.Println("Failed to get composition for train", train, ":", err)
 			continue

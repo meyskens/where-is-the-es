@@ -18,6 +18,11 @@ const vehicleTypeToImage: Record<string, string> = {
   default: '/images/Bvcmz248-euro-b.webp',
 };
 
+const newLivery = [
+  "61 80 50-71 118-9",
+  "61 80 50-71 202-4"
+]
+
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
   const [composition, setComposition] = useState<CompositionResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -42,6 +47,9 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
   }, [trainNumber]);
 
   const getVehicleImage = (vehicle: Vehicle): string => {
+    if (newLivery.indexOf(vehicle.uicNumber) > -1) {
+      return '/images/Bvcmz248-euro-chouchette-a.webp';
+    }
     return vehicleTypeToImage[vehicle.type] || vehicleTypeToImage.default;
   };
 
@@ -95,6 +103,7 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
               <div className="text-center mt-2">
                 <div className="text-2xl">{vehicle.number}</div>
                 <div className="text-sm text-muted-foreground">{vehicle.type}</div>
+                <div className="text-xs text-muted-foreground">{vehicle.uicNumber}</div>
               </div>
             </div>
           ))}
