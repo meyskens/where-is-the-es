@@ -14,10 +14,22 @@ import (
 	"golang.org/x/net/html"
 )
 
-func GetComposition(trainNumber string, tcURL string) (traindata.Composition, error) {
-	// get https://europeansleeper.eu/train-composition
+var trainRunIDs = map[string]string{
+	"453": "1",
+	"452": "2",
+	"475": "5",
+	"474": "6",
+}
 
-	resp, err := http.Get("https://europeansleeper.eu/train-composition")
+func GetComposition(trainNumber string, tcURL string) (traindata.Composition, error) {
+	runID, ok := trainRunIDs[trainNumber]
+	if !ok {
+		return traindata.Composition{}, errors.New("unknown train number: " + trainNumber)
+	}
+
+	resp, err := http.Post("https://europeansleeper.eu/train-layout/run",
+		"application/x-www-form-urlencoded",
+		strings.NewReader("r="+runID))
 	if err != nil {
 		return traindata.Composition{}, err
 	}
@@ -27,7 +39,6 @@ func GetComposition(trainNumber string, tcURL string) (traindata.Composition, er
 		return traindata.Composition{}, errors.New("failed to get train composition, status code: " + resp.Status)
 	}
 
-	// read the response body
 	var data []byte
 	data, err = io.ReadAll(resp.Body)
 	if err != nil {
