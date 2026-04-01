@@ -18,6 +18,19 @@ const vehicleTypeToImage: Record<string, string> = {
   default: '/images/Bvcmz248-euro-b.webp',
 };
 
+const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
+  "474": {
+    Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+    Couchette: '/images/Bvcmz-RDC-a.gif',
+    default: '/images/Bvcmz-RDC-a.gif',
+  },
+  "475": {
+    Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+    Couchette: '/images/Bvcmz-RDC-a.gif',
+    default: '/images/Bvcmz-RDC-a.gif',
+  },
+};
+
 const newLivery = [
   "61 80 50-71 118-9",
   "61 80 50-71 202-4"
@@ -49,6 +62,10 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
   const getVehicleImage = (vehicle: Vehicle): string => {
     if (newLivery.indexOf(vehicle.uicNumber) > -1) {
       return '/images/Bvcmz248-euro-chouchette-a.webp';
+    }
+    const override = trainImageOverrides[trainNumber]?.[vehicle.type];
+    if (override) {
+      return override;
     }
     return vehicleTypeToImage[vehicle.type] || vehicleTypeToImage.default;
   };
