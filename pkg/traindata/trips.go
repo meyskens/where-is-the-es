@@ -14,6 +14,7 @@ type Trip struct {
 
 type Stop struct {
 	StationName   string
+	StationUIC    int
 	ArrivalTime   time.Time
 	DepartureTime time.Time
 	Platform      string

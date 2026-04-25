@@ -152,7 +152,7 @@ func (a *APIV1) refreshCache() {
 			}
 
 			if europeansleeper.TrainDays[train] != nil && contains(europeansleeper.TrainDays[train], date.Weekday()) {
-				trip, err := europeansleeper.FetchTimetable(train, date)
+				trip, err := europeansleeper.FetchTimetable(train, date, a.tcURL)
 				if err != nil {
 					log.Println("Failed to get trip for train", train, "on date", date, ":", err)
 					continue

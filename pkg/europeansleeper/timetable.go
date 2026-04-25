@@ -1,13 +1,16 @@
 package europeansleeper
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
+	edlib "github.com/hbollon/go-edlib"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 	"golang.org/x/net/html"
 )
@@ -241,7 +244,7 @@ import (
     </div>
 */
 
-func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error) {
+func FetchTimetable(trainNumber string, date time.Time, tcURL string) (*traindata.Trip, error) {
 	resp, err := http.PostForm("https://europeansleeper.eu/timetable/run", url.Values{
 		"departure-date-sql": {date.Format("2006-01-02")},
 	})
@@ -296,7 +299,140 @@ func FetchTimetable(trainNumber string, date time.Time) (*traindata.Trip, error)
 
 	tt.Date = date.Truncate(24 * time.Hour) // Set the date of the trip to the given date
 
+	if tcURL != "" {
+		enhanceTimetableData(tcURL, tt, trainNumber)
+	}
+
 	return tt, nil
+}
+
+func enhanceTimetableData(tcURL string, trip *traindata.Trip, trainNum string) {
+	resp, err := http.Get(tcURL)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	tc := TCResponse{}
+	if err := json.Unmarshal(data, &tc); err != nil {
+		return
+	}
+
+	svcIdx := -1
+	for i := range tc.Services {
+		if tc.Services[i].TrainNumber == "ES"+trainNum &&
+			tc.Services[i].DepartureDate == trip.Date.Format("2006-01-02") {
+			svcIdx = i
+			break
+		}
+	}
+	if svcIdx == -1 {
+		return
+	}
+
+	type tcEntry struct {
+		normalized string
+		uic        int
+	}
+	tcEntries := make([]tcEntry, 0, len(tc.Services[svcIdx].Timetable.Stops))
+	uicByName := map[string]int{}
+	for _, tcStop := range tc.Services[svcIdx].Timetable.Stops {
+		if tcStop.StationUIC == 0 {
+			continue
+		}
+		norm := normalizeStationName(tcStop.Station)
+		uicByName[norm] = tcStop.StationUIC
+		tcEntries = append(tcEntries, tcEntry{normalized: norm, uic: tcStop.StationUIC})
+	}
+
+	for j := range trip.Stops {
+		key := normalizeStationName(trip.Stops[j].StationName)
+		if uic, ok := uicByName[key]; ok {
+			trip.Stops[j].StationUIC = uic
+			continue
+		}
+		// Fuzzy match: find the TC stop with the highest similarity above
+		// a threshold. This handles cases where the TC and HTML sources
+		// spell stations differently (extra/missing words, accents, etc.).
+		bestUIC := 0
+		bestScore := 0.0
+		for _, e := range tcEntries {
+			score := stringSimilarity(key, e.normalized)
+			if score > bestScore {
+				bestScore = score
+				bestUIC = e.uic
+			}
+		}
+		if bestScore >= 0.7 {
+			trip.Stops[j].StationUIC = bestUIC
+		}
+	}
+}
+
+// stringSimilarity returns a value in [0, 1] expressing how similar two
+// normalized station names are. It combines a substring containment check
+// (so a name fully contained in another scores highly even if much shorter)
+// with the Jaro-Winkler similarity from go-edlib.
+func stringSimilarity(a, b string) float64 {
+	if a == "" || b == "" {
+		return 0
+	}
+	if a == b {
+		return 1
+	}
+	// Substring containment is a strong signal: e.g. "praguehlavninadrazi"
+	// vs "praguehlavninadrazimainstation".
+	if strings.Contains(a, b) || strings.Contains(b, a) {
+		shorter, longer := len(a), len(b)
+		if shorter > longer {
+			shorter, longer = longer, shorter
+		}
+		return 0.8 + 0.2*float64(shorter)/float64(longer)
+	}
+	return float64(edlib.JaroWinklerSimilarity(a, b))
+}
+
+var stationNameSubstitutions = []struct {
+	pattern *regexp.Regexp
+	to      string
+}{
+	// Typo in the TC response: "Ostbahnnhof" -> "Ostbahnhof".
+	{regexp.MustCompile(`(?i)ostbahnnhof`), "ostbahnhof"},
+	// Czech spellings used interchangeably with English in different sources.
+	{regexp.MustCompile(`(?i)\bpraha\b`), "prague"},
+	// Abbreviations -> full form. Use word boundaries so "cs" doesn't match
+	// inside other words.
+	{regexp.MustCompile(`(?i)\bhbf\b`), "hauptbahnhof"},
+	{regexp.MustCompile(`(?i)\bcs\b`), "centraal"},
+	{regexp.MustCompile(`(?i)\bhs\b`), "holland spoor"},
+	{regexp.MustCompile(`(?i)\bhl\.?\s*n\.?`), "hlavni nadrazi"},
+	{regexp.MustCompile(`(?i)\bhln\b`), "hlavni nadrazi"},
+	// "(main station)" annotation found in the timetable HTML.
+	{regexp.MustCompile(`(?i)\bmain\s*station\b`), "hlavni nadrazi"},
+}
+
+// normalizeStationName produces a comparable form of a station name so that
+// stations spelled differently in the timetable HTML and the TC API still
+// match. It lowercases, expands known abbreviations to a canonical full form,
+// then strips to alphanumerics.
+func normalizeStationName(s string) string {
+	s = strings.ToLower(s)
+	for _, sub := range stationNameSubstitutions {
+		s = sub.pattern.ReplaceAllString(s, sub.to)
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func parseTimetable(trainNumber string, body io.Reader) (*traindata.Trip, error) {
