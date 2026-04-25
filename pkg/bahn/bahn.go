@@ -134,7 +134,6 @@ func (c *Client) FindJourneys(ctx context.Context, trainNumber string, date time
 	q.Set("date", date.Format("2006-01-02"))
 
 	endpoint := c.baseURL + "/find?" + q.Encode() + "&transportTypes=" + defaultTransportTypes
-	fmt.Println("DB API FindJourneys endpoint:", endpoint)
 
 	var raw struct {
 		Journeys []struct {
