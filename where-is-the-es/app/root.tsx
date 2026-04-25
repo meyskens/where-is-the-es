@@ -48,7 +48,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <footer className="text-center text-sm text-black p-4 bg-[#CDC4E1] mt-auto">
           <div className="container mx-auto px-4">
             <p>
-              Made with ❤️ by in Belgium, the Netherlands, Germany and the Czech Republic.
+              Made with ❤️ by in Belgium, the Netherlands, France, Germany and the Czech Republic.
             </p>
             <p className="mt-2">
               Open source under the AGPL license. <a href="https://github.com/meyskens/where-is-the-es">View on GitHub</a>.
