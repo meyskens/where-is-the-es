@@ -36,6 +36,12 @@ const newLivery = [
   "61 80 50-71 202-4"
 ]
 
+const uicNumberOverrides: Record<string, string> = {
+  "61 81 71-71 463-6": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+  "61 81 71-71 462-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+  "61 81 71-71 456-0": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+};
+
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
   const [composition, setComposition] = useState<CompositionResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -60,6 +66,9 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
   }, [trainNumber]);
 
   const getVehicleImage = (vehicle: Vehicle): string => {
+    if (uicNumberOverrides[vehicle.uicNumber]) {
+      return uicNumberOverrides[vehicle.uicNumber];
+    }
     if (newLivery.indexOf(vehicle.uicNumber) > -1) {
       return '/images/Bvcmz248-euro-chouchette-a.webp';
     }
