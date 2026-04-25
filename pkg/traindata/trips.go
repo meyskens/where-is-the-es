@@ -25,6 +25,7 @@ type Stop struct {
 	RealPlatform      string
 	RealArrivalTime   time.Time
 	RealDepartureTime time.Time
+	IsRealTime        bool
 
 	NextDay   bool
 	Cancelled bool

@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/europeansleeper"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
@@ -22,16 +24,21 @@ type APIV1 struct {
 
 	initDone bool
 
-	tcURL string
+	tcURL      string
+	bahnClient *bahn.Client
 }
 
-func New(tcURL string) *APIV1 {
-	return &APIV1{
+func New(tcURL, dbAPIKey, dbClientID string) *APIV1 {
+	a := &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
 		refreshTimer:     time.NewTicker(1 * time.Minute),
 		tcURL:            tcURL,
 	}
+	if dbAPIKey != "" && dbClientID != "" {
+		a.bahnClient = bahn.NewClient(dbAPIKey, dbClientID)
+	}
+	return a
 }
 
 func (a *APIV1) init() {
@@ -156,6 +163,14 @@ func (a *APIV1) refreshCache() {
 				if err != nil {
 					log.Println("Failed to get trip for train", train, "on date", date, ":", err)
 					continue
+				}
+				if a.bahnClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, err := europeansleeper.EnhanceWithDB(ctx, a.bahnClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with DB for train", train, "on date", date, ":", err)
+					}
+					cancel()
 				}
 				a.timetableCache[service] = trip
 			}

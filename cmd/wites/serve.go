@@ -23,9 +23,11 @@ func init() {
 }
 
 type serveCmdOptions struct {
-	BindAddr string
-	Port     int
-	TCURL    string
+	BindAddr   string
+	Port       int
+	TCURL      string
+	DBAPIKey   string
+	DBClientID string
 }
 
 // NewServeCmd generates the `serve` command
@@ -41,6 +43,8 @@ func NewServeCmd() *cobra.Command {
 	c.Flags().StringVarP(&s.BindAddr, "bind-address", "b", "0.0.0.0", "address to bind port to")
 	c.Flags().IntVarP(&s.Port, "port", "p", 8080, "Port to listen on")
 	c.Flags().StringVarP(&s.TCURL, "tc-url", "t", "", "address of API with more accurate composition")
+	c.Flags().StringVar(&s.DBAPIKey, "db-api-key", os.Getenv("DB_API_KEY"), "Deutsche Bahn RIS-Journeys API key (DB-Api-Key), defaults to $DB_API_KEY")
+	c.Flags().StringVar(&s.DBClientID, "db-client-id", os.Getenv("DB_CLIENT_ID"), "Deutsche Bahn RIS-Journeys client ID (DB-Client-Id), defaults to $DB_CLIENT_ID")
 
 	return c
 }
@@ -60,7 +64,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New(s.TCURL)
+	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID)
 	v1.Register(e)
 
 	// Serve frontend static files

@@ -76,6 +76,68 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
         }
     };
 
+    const getPlatformInfo = (stop: Stop) => {
+        const plannedPlatform = stop.Platform?.trim();
+        const realtimePlatform = stop.RealPlatform?.trim();
+
+        if (plannedPlatform && realtimePlatform && plannedPlatform !== realtimePlatform) {
+            return {
+                hasRealtimeChange: true,
+                plannedPlatform,
+                displayedPlatform: realtimePlatform,
+            };
+        }
+
+        return {
+            hasRealtimeChange: false,
+            plannedPlatform: plannedPlatform || null,
+            displayedPlatform: plannedPlatform || realtimePlatform || null,
+        };
+    };
+
+    const getRealtimeTimeInfo = (scheduledTime: string, realtimeTime: string) => {
+        if (!isValidTime(scheduledTime) || !isValidTime(realtimeTime)) {
+            return {
+                showRealtime: false,
+                strikeScheduled: false,
+                realtimeClassName: "",
+            };
+        }
+
+        const scheduledDate = new Date(scheduledTime);
+        const realtimeDate = new Date(realtimeTime);
+
+        if (Number.isNaN(scheduledDate.getTime()) || Number.isNaN(realtimeDate.getTime())) {
+            return {
+                showRealtime: false,
+                strikeScheduled: false,
+                realtimeClassName: "",
+            };
+        }
+
+        if (realtimeDate > scheduledDate) {
+            return {
+                showRealtime: true,
+                strikeScheduled: true,
+                realtimeClassName: "text-red-600",
+            };
+        }
+
+        if (realtimeDate < scheduledDate) {
+            return {
+                showRealtime: true,
+                strikeScheduled: false,
+                realtimeClassName: "text-green-600",
+            };
+        }
+
+        return {
+            showRealtime: false,
+            strikeScheduled: false,
+            realtimeClassName: "",
+        };
+    };
+
     if (loading) {
         return (
             <Card>
@@ -169,6 +231,12 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
                         <div className="space-y-6">
                             {timetable.Stops.map((stop: Stop, index: number) => (
                                 <div key={index} className="relative flex items-start gap-4">
+                                    {(() => {
+                                        const arrivalTimeInfo = getRealtimeTimeInfo(stop.ArrivalTime, stop.RealArrivalTime);
+                                        const departureTimeInfo = getRealtimeTimeInfo(stop.DepartureTime, stop.RealDepartureTime);
+
+                                        return (
+                                            <>
                                     {/* Times section */}
                                     <div className="w-24 flex-shrink-0 text-xs space-y-1">
                                         {/* Arrival time */}
@@ -177,9 +245,14 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
                                                 : 'text-muted-foreground/50'
                                             }`}>
                                             <ArrowDownRight className="h-3 w-3" />
-                                            <span className="font-medium">
+                                            <span className={`font-medium ${arrivalTimeInfo.strikeScheduled ? 'line-through' : ''}`}>
                                                 {formatTime(stop.ArrivalTime)}
                                             </span>
+                                            {arrivalTimeInfo.showRealtime && (
+                                                <span className={`font-medium ${arrivalTimeInfo.realtimeClassName}`}>
+                                                    {formatTime(stop.RealArrivalTime)}
+                                                </span>
+                                            )}
                                         </div>
                                         {/* Departure time */}
                                         <div className={`flex items-center gap-1 ${isValidTime(stop.DepartureTime)
@@ -187,9 +260,14 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
                                                 : 'text-muted-foreground/50'
                                             }`}>
                                             <ArrowUpRight className="h-3 w-3" />
-                                            <span className="font-medium">
+                                            <span className={`font-medium ${departureTimeInfo.strikeScheduled ? 'line-through' : ''}`}>
                                                 {formatTime(stop.DepartureTime)}
                                             </span>
+                                            {departureTimeInfo.showRealtime && (
+                                                <span className={`font-medium ${departureTimeInfo.realtimeClassName}`}>
+                                                    {formatTime(stop.RealDepartureTime)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -205,25 +283,47 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
 
                                     {/* Stop information */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex items-start gap-2 mb-1">
                                             <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                            <h3 className={`font-medium text-sm ${stop.Cancelled ? 'line-through text-red-500' : ''
-                                                }`}>
-                                                {stop.StationName}
-                                            </h3>
-                                            {stop.Cancelled && (
-                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                                    Cancelled
-                                                </span>
-                                            )}
-                                        </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className={`font-medium text-sm ${stop.Cancelled ? 'line-through text-red-500' : ''
+                                                        }`}>
+                                                        {stop.StationName}
+                                                    </h3>
+                                                    {stop.Cancelled && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                            Cancelled
+                                                        </span>
+                                                    )}
+                                                </div>
 
-                                        {stop.Platform && (
-                                            <div className="text-xs text-muted-foreground">
-                                                Platform: {stop.Platform}
+                                                {(() => {
+                                                    const platformInfo = getPlatformInfo(stop);
+                                                    if (!platformInfo.displayedPlatform) {
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <div className="text-xs text-muted-foreground mt-1">
+                                                            Platform:{" "}
+                                                            {platformInfo.hasRealtimeChange ? (
+                                                                <>
+                                                                    <span className="line-through">{platformInfo.plannedPlatform}</span>
+                                                                    <span className="mx-1 text-red-600 font-medium">{platformInfo.displayedPlatform}</span>
+                                                                </>
+                                                            ) : (
+                                                                <span>{platformInfo.displayedPlatform}</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             ))}
                         </div>
