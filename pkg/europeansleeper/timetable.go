@@ -414,6 +414,8 @@ var stationNameSubstitutions = []struct {
 	{regexp.MustCompile(`(?i)\bhln\b`), "hlavni nadrazi"},
 	// "(main station)" annotation found in the timetable HTML.
 	{regexp.MustCompile(`(?i)\bmain\s*station\b`), "hlavni nadrazi"},
+	// French <-> Dutch station-name aliases used by NMBS/SNCB.
+	{regexp.MustCompile(`(?i)\bmons\b`), "bergen"},
 }
 
 // normalizeStationName produces a comparable form of a station name so that

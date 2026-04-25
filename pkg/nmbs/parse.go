@@ -3,11 +3,17 @@ package nmbs
 import (
 	"bytes"
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 	"golang.org/x/net/html"
+)
+
+var (
+	timeRegexp  = regexp.MustCompile(`\b([0-2]?\d:[0-5]\d)\b`)
+	delayRegexp = regexp.MustCompile(`\+\s*(\d+)`)
 )
 
 /*
@@ -447,6 +453,10 @@ import (
 
 var ErrNoTime = errors.New("no time found")
 
+// ErrNoTrain is returned when NMBS has no record of the requested train on
+// the requested date.
+var ErrNoTrain = errors.New("no train found for given date")
+
 func (f *NMBSFetcher) ParseTimetable(body []byte) ([]traindata.Stop, error) {
 	z := html.NewTokenizer(bytes.NewReader(body))
 
@@ -477,7 +487,7 @@ func (f *NMBSFetcher) ParseTimetable(body []byte) ([]traindata.Stop, error) {
 					if a.Key == "id" && a.Val == "trainSearchErrorResult" {
 						for _, a := range t.Attr {
 							if a.Key == "value" && a.Val == "true" {
-								return nil, errors.New("trainSearchErrorResult returned true")
+								return nil, ErrNoTrain
 							}
 						}
 					}
@@ -487,7 +497,7 @@ func (f *NMBSFetcher) ParseTimetable(body []byte) ([]traindata.Stop, error) {
 		}
 	}
 	if len(stops) == 0 {
-		return nil, errors.New("no stops found")
+		return nil, ErrNoTrain
 	}
 
 	return stops, nil
@@ -582,17 +592,18 @@ func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, error)
 		return time.Time{}, time.Time{}, ErrNoTime
 	}
 
-	delayString := "0"
-	if strings.Contains(timeString, "+") {
-		delayString = strings.Split(timeString, "+")[1]
-		timeString = strings.Split(timeString, "+")[0]
+	timeMatch := timeRegexp.FindString(timeString)
+	if timeMatch == "" {
+		return time.Time{}, time.Time{}, ErrNoTime
+	}
 
-		timeString = strings.TrimSpace(timeString)
-		delayString = strings.TrimSpace(delayString)
+	delayString := "0"
+	if m := delayRegexp.FindStringSubmatch(timeString); len(m) == 2 {
+		delayString = m[1]
 	}
 
 	// Parse the time string
-	parsedTime, err := time.Parse("15:04", timeString)
+	parsedTime, err := time.Parse("15:04", timeMatch)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}

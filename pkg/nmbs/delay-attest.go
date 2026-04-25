@@ -2,7 +2,9 @@ package nmbs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"time"
 
@@ -40,7 +42,8 @@ curl 'https://www.belgiantrain.be/api/RoutePlanner/GetDelayCertificateStationTra
 */
 
 type NMBSFetcher struct {
-	flareSolverr *flaresolverr.Client
+	flareSolverr    *flaresolverr.Client
+	flareSolverrURL string
 }
 
 func NewNMBSFetcher(flareSolverrURL string) (*NMBSFetcher, error) {
@@ -51,19 +54,25 @@ func NewNMBSFetcher(flareSolverrURL string) (*NMBSFetcher, error) {
 		return nil, err
 	}
 	return &NMBSFetcher{
-		flareSolverr: c,
+		flareSolverr:    c,
+		flareSolverrURL: flareSolverrURL,
 	}, nil
 }
 
 func (f *NMBSFetcher) FetchTimetable(trainNumber string, date time.Time) ([]traindata.Stop, error) {
-	// Get the request verification token
-	token, err := f.fetchRequestVerificationToken()
-	if err != nil {
-		return nil, err
-	}
+	log.Println("NMBS: fetching timetable for train", trainNumber, "date", date.Format("2006-01-02"))
 
-	resp, err := f.flareSolverr.Post(flaresolverr.PostParams{
-		URL: "https://www.belgiantrain.be/api/RoutePlanner/GetDelayCertificateStationTrainsDetails",
+	// Get the request verification token
+	token, cookies, err := f.fetchRequestVerificationToken()
+	if err != nil {
+		log.Println("NMBS: failed to fetch verification token for train", trainNumber, ":", err)
+		return nil, fmt.Errorf("fetching verification token: %w", err)
+	}
+	log.Println("NMBS: got verification token (len", len(token), ") and", len(cookies), "cookies for train", trainNumber)
+
+	resp, err := f.flareSolverr.PostRaw(flaresolverr.PostParams{
+		URL:     "https://www.belgiantrain.be/api/RoutePlanner/GetDelayCertificateStationTrainsDetails",
+		Cookies: cookies,
 		PostData: url.Values{
 			"__RequestVerificationToken":   {token},
 			"ParameterSearchByStationName": {"ByStationName"},
@@ -81,18 +90,53 @@ func (f *NMBSFetcher) FetchTimetable(trainNumber string, date time.Time) ([]trai
 	})
 
 	if err != nil {
-		return nil, err
+		log.Println("NMBS: flaresolverr POST transport failed for train", trainNumber, ":", err)
+		return nil, fmt.Errorf("flaresolverr POST: %w", err)
 	}
 
-	return f.ParseTimetable(resp)
+	log.Printf("NMBS: POST flaresolverr status=%q solution-status=%d message=%q version=%s for train %s", resp.Status, resp.Solution.Status, resp.Message, resp.Version, trainNumber)
+
+	body, err := unwrapSolutionResponse(resp.Solution.Response)
+	if err != nil {
+		log.Println("NMBS: failed to unwrap POST solution response for train", trainNumber, ":", err)
+		return nil, fmt.Errorf("unwrapping POST solution response: %w", err)
+	}
+
+	log.Println("NMBS: received", len(body), "bytes for train", trainNumber, "date", date.Format("2006-01-02"))
+
+	stops, err := f.ParseTimetable(body)
+	if err != nil {
+		preview := body
+		if len(preview) > 500 {
+			preview = preview[:500]
+		}
+		log.Println("NMBS: parse failed for train", trainNumber, "date", date.Format("2006-01-02"), ":", err, "- response preview:", string(preview))
+		return nil, fmt.Errorf("parse timetable: %w", err)
+	}
+
+	log.Println("NMBS: parsed", len(stops), "stops for train", trainNumber, "date", date.Format("2006-01-02"))
+	return stops, nil
 }
 
-func (f *NMBSFetcher) fetchRequestVerificationToken() (string, error) {
-	body, err := f.flareSolverr.Get(flaresolverr.GetParams{
+func (f *NMBSFetcher) fetchRequestVerificationToken() (string, flaresolverr.Cookies, error) {
+	log.Println("NMBS: configured FlareSolverr URL:", f.flareSolverrURL)
+	resp, err := f.flareSolverr.GetRaw(flaresolverr.GetParams{
 		URL: "https://www.belgiantrain.be/nl/support/customer-service/delay-certificate",
 	})
 	if err != nil {
-		return "", err
+		log.Println("NMBS: flaresolverr GET transport failed:", err)
+		return "", nil, fmt.Errorf("flaresolverr GET transport: %w", err)
+	}
+
+	log.Printf("NMBS: GET flaresolverr status=%q solution-status=%d message=%q version=%s", resp.Status, resp.Solution.Status, resp.Message, resp.Version)
+
+	if string(resp.Status) != "ok" {
+		return "", nil, fmt.Errorf("flaresolverr GET non-ok status=%q message=%q", resp.Status, resp.Message)
+	}
+
+	body, err := unwrapSolutionResponse(resp.Solution.Response)
+	if err != nil {
+		return "", nil, fmt.Errorf("unwrapping GET solution response: %w", err)
 	}
 
 	// Find the token in the body
@@ -107,31 +151,57 @@ func (f *NMBSFetcher) fetchRequestVerificationToken() (string, error) {
 			break
 		}
 
-		if tt == html.StartTagToken {
-			t := z.Token()
-			if t.Data == "input" {
-				for _, a := range t.Attr {
-					if a.Key == "name" && a.Val == "__RequestVerificationToken" {
-						// Read the next token
-						tt = z.Next()
-						if tt == html.SelfClosingTagToken {
-							t = z.Token()
-							for _, a := range t.Attr {
-								if a.Key == "value" {
-									token = a.Val
-									break
-								}
-							}
-						}
-					}
-				}
+		if tt != html.StartTagToken && tt != html.SelfClosingTagToken {
+			continue
+		}
+
+		t := z.Token()
+		if t.Data != "input" {
+			continue
+		}
+
+		isToken := false
+		value := ""
+		for _, a := range t.Attr {
+			if a.Key == "name" && a.Val == "__RequestVerificationToken" {
+				isToken = true
 			}
+			if a.Key == "value" {
+				value = a.Val
+			}
+		}
+		if isToken && value != "" {
+			token = value
+			break
 		}
 	}
 
 	if token == "" {
-		return "", fmt.Errorf("could not find token")
+		preview := body
+		if len(preview) > 500 {
+			preview = preview[:500]
+		}
+		log.Println("NMBS: token not found in response (", len(body), "bytes ), preview:", string(preview))
+		return "", nil, fmt.Errorf("could not find token in %d-byte response", len(body))
 	}
 
-	return token, nil
+	return token, resp.Solution.Cookies, nil
+}
+
+// unwrapSolutionResponse converts the flaresolverr Solution.Response
+// (json.RawMessage) into the actual page body bytes. The field is sometimes
+// a JSON-encoded string (the typical case for HTML pages) and sometimes
+// already raw bytes. Handle both.
+func unwrapSolutionResponse(raw []byte) ([]byte, error) {
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("empty solution response")
+	}
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return nil, err
+		}
+		return []byte(s), nil
+	}
+	return raw, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/europeansleeper"
+	"github.com/meyskens/where-is-the-es/pkg/nmbs"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
 
@@ -26,11 +27,12 @@ type APIV1 struct {
 
 	initDone bool
 
-	tcURL      string
-	bahnClient *bahn.Client
+	tcURL       string
+	bahnClient  *bahn.Client
+	nmbsFetcher *nmbs.NMBSFetcher
 }
 
-func New(tcURL, dbAPIKey, dbClientID string) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, flareSolverrURL string) *APIV1 {
 	a := &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
@@ -39,6 +41,14 @@ func New(tcURL, dbAPIKey, dbClientID string) *APIV1 {
 	}
 	if dbAPIKey != "" && dbClientID != "" {
 		a.bahnClient = bahn.NewClient(dbAPIKey, dbClientID)
+	}
+	if flareSolverrURL != "" {
+		fetcher, err := nmbs.NewNMBSFetcher(flareSolverrURL)
+		if err != nil {
+			log.Println("Failed to initialise NMBS fetcher:", err)
+		} else {
+			a.nmbsFetcher = fetcher
+		}
 	}
 	return a
 }
@@ -173,6 +183,12 @@ func (a *APIV1) refreshCache() {
 						log.Println("Failed to enhance trip with DB for train", train, "on date", date, ":", err)
 					}
 					cancel()
+				}
+				if a.nmbsFetcher != nil {
+					_, err := europeansleeper.EnhanceWithNMBS(a.nmbsFetcher, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with NMBS for train", train, "on date", date, ":", err)
+					}
 				}
 				if oldTrip, exists := a.timetableCache[service]; exists {
 					preserveRealtimeStops(trip, oldTrip)
