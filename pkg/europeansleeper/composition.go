@@ -196,11 +196,19 @@ func enhanceCompositionData(tcURL string, composition traindata.Composition, tra
 		return composition
 	}
 
-	svc := tc.Services[0]
+	svcIdx := -1
+	for i := range tc.Services {
+		if tc.Services[i].TrainNumber == "ES"+trainNum {
+			svcIdx = i
+			break
+		}
+	}
 
-	if svc.TrainNumber != "ES"+trainNum {
+	if svcIdx == -1 {
 		return composition
 	}
+
+	svc := tc.Services[svcIdx]
 
 	uicNum := map[int]string{}
 	uicList := []uicOrder{}
