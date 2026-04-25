@@ -2,7 +2,9 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -172,8 +174,74 @@ func (a *APIV1) refreshCache() {
 					}
 					cancel()
 				}
+				if oldTrip, exists := a.timetableCache[service]; exists {
+					preserveRealtimeStops(trip, oldTrip)
+				}
 				a.timetableCache[service] = trip
 			}
 		}
 	}
+}
+
+func preserveRealtimeStops(current, previous *traindata.Trip) {
+	if current == nil || previous == nil {
+		return
+	}
+
+	oldStopsByKey := make(map[string]traindata.Stop, len(previous.Stops))
+	for _, stop := range previous.Stops {
+		oldStopsByKey[stopCacheKey(stop)] = stop
+	}
+
+	for i := range current.Stops {
+		key := stopCacheKey(current.Stops[i])
+		oldStop, ok := oldStopsByKey[key]
+		if !ok {
+			continue
+		}
+
+		if hasRealtimeSignal(current.Stops[i]) || !hasRealtimeSignal(oldStop) {
+			continue
+		}
+
+		current.Stops[i].RealArrivalTime = oldStop.RealArrivalTime
+		current.Stops[i].RealDepartureTime = oldStop.RealDepartureTime
+		current.Stops[i].RealPlatform = oldStop.RealPlatform
+		current.Stops[i].IsRealTime = oldStop.IsRealTime
+	}
+}
+
+func stopCacheKey(stop traindata.Stop) string {
+	if stop.StationUIC != 0 {
+		return fmt.Sprintf("uic:%d", stop.StationUIC)
+	}
+
+	name := strings.TrimSpace(strings.ToLower(stop.StationName))
+	return "name:" + name
+}
+
+func hasRealtimeSignal(stop traindata.Stop) bool {
+	if stop.Cancelled {
+		return true
+	}
+
+	if !stop.RealArrivalTime.IsZero() {
+		if stop.ArrivalTime.IsZero() || !stop.RealArrivalTime.Equal(stop.ArrivalTime) {
+			return true
+		}
+	}
+
+	if !stop.RealDepartureTime.IsZero() {
+		if stop.DepartureTime.IsZero() || !stop.RealDepartureTime.Equal(stop.DepartureTime) {
+			return true
+		}
+	}
+
+	if stop.RealPlatform != "" {
+		if stop.Platform == "" || stop.RealPlatform != stop.Platform {
+			return true
+		}
+	}
+
+	return false
 }
