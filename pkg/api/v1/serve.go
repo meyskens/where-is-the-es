@@ -111,7 +111,7 @@ func (a *APIV1) Register(e *echo.Echo) {
 		if !ok {
 			return c.String(404, "Timetable not found")
 		}
-		return c.JSON(200, tt)
+		return c.JSON(200, tt.ToBrowser())
 	})
 }
 

@@ -13,8 +13,8 @@ export interface Stop {
     ArrivalTime: string;
     DepartureTime: string;
     Platform: string;
-    DataSources: any;
-    PrefferedDataSource: number;
+    DataSources: string[];
+    PrefferedDataSource: string;
     RealPlatform: string;
     RealArrivalTime: string;
     RealDepartureTime: string;
