@@ -32,7 +32,6 @@ const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
 };
 
 const newLivery = [
-  "61 80 50-71 118-9",
   "61 80 50-71 202-4",
   "56 80 50-71 118-9",
 ]
