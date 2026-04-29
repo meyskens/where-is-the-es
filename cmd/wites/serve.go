@@ -23,12 +23,13 @@ func init() {
 }
 
 type serveCmdOptions struct {
-	BindAddr        string
-	Port            int
-	TCURL           string
-	DBAPIKey        string
-	DBClientID      string
-	FlareSolverrURL string
+	BindAddr          string
+	Port              int
+	TCURL             string
+	DBAPIKey          string
+	DBClientID        string
+	NSSubscriptionKey string
+	FlareSolverrURL   string
 }
 
 // NewServeCmd generates the `serve` command
@@ -46,6 +47,7 @@ func NewServeCmd() *cobra.Command {
 	c.Flags().StringVarP(&s.TCURL, "tc-url", "t", "", "address of API with more accurate composition")
 	c.Flags().StringVar(&s.DBAPIKey, "db-api-key", os.Getenv("DB_API_KEY"), "Deutsche Bahn RIS-Journeys API key (DB-Api-Key), defaults to $DB_API_KEY")
 	c.Flags().StringVar(&s.DBClientID, "db-client-id", os.Getenv("DB_CLIENT_ID"), "Deutsche Bahn RIS-Journeys client ID (DB-Client-Id), defaults to $DB_CLIENT_ID")
+	c.Flags().StringVar(&s.NSSubscriptionKey, "ns-subscription-key", os.Getenv("NS_SUBSCRIPTION_KEY"), "NS Reisinformatie API subscription key (Ocp-Apim-Subscription-Key), defaults to $NS_SUBSCRIPTION_KEY")
 	c.Flags().StringVar(&s.FlareSolverrURL, "flaresolverr-url", os.Getenv("FLARESOLVERR_URL"), "FlareSolverr base URL used for NMBS realtime scraping, defaults to $FLARESOLVERR_URL")
 
 	return c
@@ -66,7 +68,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.FlareSolverrURL)
+	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL)
 	v1.Register(e)
 
 	// Serve frontend static files

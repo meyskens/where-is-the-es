@@ -11,6 +11,7 @@ import (
 	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/europeansleeper"
 	"github.com/meyskens/where-is-the-es/pkg/nmbs"
+	"github.com/meyskens/where-is-the-es/pkg/ns"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
 
@@ -29,10 +30,11 @@ type APIV1 struct {
 
 	tcURL       string
 	bahnClient  *bahn.Client
+	nsClient    *ns.Client
 	nmbsFetcher *nmbs.NMBSFetcher
 }
 
-func New(tcURL, dbAPIKey, dbClientID, flareSolverrURL string) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL string) *APIV1 {
 	a := &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
@@ -41,6 +43,9 @@ func New(tcURL, dbAPIKey, dbClientID, flareSolverrURL string) *APIV1 {
 	}
 	if dbAPIKey != "" && dbClientID != "" {
 		a.bahnClient = bahn.NewClient(dbAPIKey, dbClientID)
+	}
+	if nsSubscriptionKey != "" {
+		a.nsClient = ns.NewClient(nsSubscriptionKey)
 	}
 	if flareSolverrURL != "" {
 		fetcher, err := nmbs.NewNMBSFetcher(flareSolverrURL)
@@ -189,6 +194,14 @@ func (a *APIV1) refreshCache() {
 					if err != nil {
 						log.Println("Failed to enhance trip with NMBS for train", train, "on date", date, ":", err)
 					}
+				}
+				if a.nsClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, err := europeansleeper.EnhanceWithNS(ctx, a.nsClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with NS for train", train, "on date", date, ":", err)
+					}
+					cancel()
 				}
 				if oldTrip, exists := a.timetableCache[service]; exists {
 					preserveRealtimeStops(trip, oldTrip)
