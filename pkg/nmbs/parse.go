@@ -518,13 +518,21 @@ func (f *NMBSFetcher) parseStop(z *html.Tokenizer) (traindata.Stop, error) {
 			if t.Data == "div" {
 				for _, a := range t.Attr {
 					if a.Key == "class" && a.Val == "planner-dtl__arrival" {
-						stop.ArrivalTime, stop.RealArrivalTime, err = f.parseTime(z)
+						var cancelled bool
+						stop.ArrivalTime, stop.RealArrivalTime, cancelled, err = f.parseTime(z)
+						if cancelled {
+							stop.Cancelled = true
+						}
 						if err != nil && err != ErrNoTime {
 							return stop, err
 						}
 					}
 					if a.Key == "class" && a.Val == "planner-dtl__departure" {
-						stop.DepartureTime, stop.RealDepartureTime, err = f.parseTime(z)
+						var cancelled bool
+						stop.DepartureTime, stop.RealDepartureTime, cancelled, err = f.parseTime(z)
+						if cancelled {
+							stop.Cancelled = true
+						}
 						if err != nil && err != ErrNoTime {
 							return stop, err
 						}
@@ -554,7 +562,7 @@ func (f *NMBSFetcher) parseStop(z *html.Tokenizer) (traindata.Stop, error) {
 	return stop, nil
 }
 
-func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, error) {
+func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, bool, error) {
 	var timePlanned time.Time
 	var timeReal time.Time
 
@@ -588,13 +596,15 @@ func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, error)
 	timeString = strings.ReplaceAll(timeString, "Aangekomen in", "")
 	timeString = strings.TrimSpace(timeString)
 
+	cancelled := strings.Contains(timeString, "Niet bediend")
+
 	if timeString == "" {
-		return time.Time{}, time.Time{}, ErrNoTime
+		return time.Time{}, time.Time{}, cancelled, ErrNoTime
 	}
 
 	timeMatch := timeRegexp.FindString(timeString)
 	if timeMatch == "" {
-		return time.Time{}, time.Time{}, ErrNoTime
+		return time.Time{}, time.Time{}, cancelled, ErrNoTime
 	}
 
 	delayString := "0"
@@ -605,7 +615,7 @@ func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, error)
 	// Parse the time string
 	parsedTime, err := time.Parse("15:04", timeMatch)
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, time.Time{}, cancelled, err
 	}
 
 	timePlanned = parsedTime
@@ -614,12 +624,12 @@ func (f *NMBSFetcher) parseTime(z *html.Tokenizer) (time.Time, time.Time, error)
 	if delayString != "0" {
 		delay, err := time.ParseDuration(delayString + "m")
 		if err != nil {
-			return time.Time{}, time.Time{}, err
+			return time.Time{}, time.Time{}, cancelled, err
 		}
 		timeReal = parsedTime.Add(delay)
 	}
 
-	return timePlanned, timeReal, nil
+	return timePlanned, timeReal, cancelled, nil
 }
 
 func (f *NMBSFetcher) parseStationName(z *html.Tokenizer) (string, error) {

@@ -130,6 +130,49 @@ func TestParseTimetable(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "cancelled stop",
+			html: `<li class="planner-dtl__item">
+					<div class="planner-dtl__arrival">
+							<div>
+								<span class="sr-only">Aangekomen in</span>
+								23:07
+							</div>
+								<div class="delay-txt">Niet bediend</div>
+					</div>
+					<div class="planner-dtl__departure">
+							<div>
+								<span class="sr-only">Vertrek in</span>
+								23:12
+							</div>
+								<div class="delay-txt">Niet bediend</div>
+					</div>
+						<div class="planner-dtl__timeline">
+							<div class="timeline__dot">
+								<div class="timeline__dot timeline__dot-transfer">
+									<span class="timeline__dot-transfer-content shade"></span>
+								</div>
+							</div>
+						</div>
+						<div class="planner-dtl__content">
+							<div class="planner-dtl__lbl mobile-full-width">
+								<span class="sr-only">Van</span>
+									<div>LUIK-GUILLEMINS</div>
+							</div>
+						</div>
+				</li>`,
+			want: []traindata.Stop{
+				{
+					StationName:       "LUIK-GUILLEMINS",
+					ArrivalTime:       mustParseTime(t, "23:07"),
+					RealArrivalTime:   mustParseTime(t, "23:07"),
+					DepartureTime:     mustParseTime(t, "23:12"),
+					RealDepartureTime: mustParseTime(t, "23:12"),
+					Cancelled:         true,
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name:    "error on empty response",
 			html:    "<div></div>",
 			want:    []traindata.Stop(nil),
