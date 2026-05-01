@@ -30,6 +30,7 @@ type serveCmdOptions struct {
 	DBClientID        string
 	NSSubscriptionKey string
 	FlareSolverrURL   string
+	GrapperURL        string
 }
 
 // NewServeCmd generates the `serve` command
@@ -49,6 +50,7 @@ func NewServeCmd() *cobra.Command {
 	c.Flags().StringVar(&s.DBClientID, "db-client-id", os.Getenv("DB_CLIENT_ID"), "Deutsche Bahn RIS-Journeys client ID (DB-Client-Id), defaults to $DB_CLIENT_ID")
 	c.Flags().StringVar(&s.NSSubscriptionKey, "ns-subscription-key", os.Getenv("NS_SUBSCRIPTION_KEY"), "NS Reisinformatie API subscription key (Ocp-Apim-Subscription-Key), defaults to $NS_SUBSCRIPTION_KEY")
 	c.Flags().StringVar(&s.FlareSolverrURL, "flaresolverr-url", os.Getenv("FLARESOLVERR_URL"), "FlareSolverr base URL used for NMBS realtime scraping, defaults to $FLARESOLVERR_URL")
+	c.Flags().StringVar(&s.GrapperURL, "grapper-url", os.Getenv("GRAPPER_URL"), "Grapper base URL used for Czech realtime data, defaults to $GRAPPER_URL")
 
 	return c
 }
@@ -68,7 +70,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL)
+	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL, s.GrapperURL)
 	v1.Register(e)
 
 	// Serve frontend static files

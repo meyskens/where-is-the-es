@@ -7,6 +7,7 @@ const (
 	DataSourceNS
 	DataSourceDB
 	DataSourceCD
+	DataSourceSZ
 )
 
 func (d DataSource) String() string {
@@ -19,6 +20,8 @@ func (d DataSource) String() string {
 		return "db"
 	case DataSourceCD:
 		return "cd"
+	case DataSourceSZ:
+		return "SŽ"
 	default:
 		return "unknown"
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/europeansleeper"
+	"github.com/meyskens/where-is-the-es/pkg/grapper"
 	"github.com/meyskens/where-is-the-es/pkg/nmbs"
 	"github.com/meyskens/where-is-the-es/pkg/ns"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
@@ -28,13 +29,14 @@ type APIV1 struct {
 
 	initDone bool
 
-	tcURL       string
-	bahnClient  *bahn.Client
-	nsClient    *ns.Client
-	nmbsFetcher *nmbs.NMBSFetcher
+	tcURL         string
+	bahnClient    *bahn.Client
+	nsClient      *ns.Client
+	nmbsFetcher   *nmbs.NMBSFetcher
+	grapperClient *grapper.Client
 }
 
-func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL string) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL string) *APIV1 {
 	a := &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
@@ -54,6 +56,9 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL string)
 		} else {
 			a.nmbsFetcher = fetcher
 		}
+	}
+	if grapperURL != "" {
+		a.grapperClient = grapper.NewClient(grapperURL)
 	}
 	return a
 }
@@ -200,6 +205,14 @@ func (a *APIV1) refreshCache() {
 					_, err := europeansleeper.EnhanceWithNS(ctx, a.nsClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with NS for train", train, "on date", date, ":", err)
+					}
+					cancel()
+				}
+				if a.grapperClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, err := europeansleeper.EnhanceWithGrapper(ctx, a.grapperClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with Grapper for train", train, "on date", date, ":", err)
 					}
 					cancel()
 				}
