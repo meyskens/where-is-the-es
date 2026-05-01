@@ -218,7 +218,7 @@ export function TrainTimetable({ trainNumber, date }: TimetableProps) {
                     )}
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
                         <Sparkles className="h-3 w-3 mr-1" />
-                        Real Time coming soon
+                        Real Time in beta
                     </span>
                 </div>
             </CardHeader>
