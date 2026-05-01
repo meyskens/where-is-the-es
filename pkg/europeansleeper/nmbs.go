@@ -110,6 +110,7 @@ func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, erro
 		}
 
 		trip.Stops[i].IsRealTime = true
+		trip.Stops[i].Cancelled = s.Cancelled
 		trip.Stops[i].DataSources = appendDataSource(trip.Stops[i].DataSources, traindata.DataSourceNMBS)
 		trip.Stops[i].PrefferedDataSource = traindata.DataSourceNMBS
 		enrichedStops++
