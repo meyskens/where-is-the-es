@@ -1,33 +1,14 @@
-import TrainPicker from "~/components/trainpicker";
-import type { Route } from "./+types/home";
-import { useState } from "react";
-import { TrainComposition } from "~/components/composition";
-import { TrainTimetable } from "~/components/timetable";
-import { Train } from "lucide-react";
-
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Where is the European Sleeper?" },
-    { name: "description", content: "A live timetable for the European Sleeper trains" },
-  ];
-}
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
+import type { Route } from "./+types/_index";
 
 export default function Home() {
-  const [selectedTrain, setSelectedTrain] = useState("453");
+  const navigate = useNavigate();
   
-  const handleTrainSelect = (trainNumber: string) => {
-    setSelectedTrain(trainNumber);
-    // You can add any additional logic here, like fetching data based on the selected train
-    console.log(`Selected train: ${trainNumber}`);
-  };
+  useEffect(() => {
+    navigate("/train/453", { replace: true });
+  }, [navigate]);
 
-  return (
-    <>
-    <TrainPicker onSelectTrain={handleTrainSelect} />
-    <div className="m-4"/>
-    <TrainComposition trainNumber={selectedTrain} />
-    <div className="m-4"/>
-    <TrainTimetable trainNumber={selectedTrain} />
-    </>
-  );
+  // This component won't actually render due to the redirect
+  return null;
 }

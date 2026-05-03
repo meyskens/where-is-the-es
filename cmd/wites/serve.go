@@ -79,10 +79,32 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create sub filesystem: %w", err)
 	}
 
-	// Serve static files
-	assetHandler := http.FileServer(http.FS(frontendSubFS))
-	e.GET("/", echo.WrapHandler(assetHandler))
-	e.GET("/*", echo.WrapHandler(assetHandler))
+	// Serve static files with SPA fallback for client-side routing
+	e.GET("/*", func(c echo.Context) error {
+		// Try to open the requested file
+		path := c.Path()
+
+		// Check if the file exists in the embedded filesystem
+		f, err := frontendSubFS.Open(path)
+		if err == nil {
+			f.Close()
+			// File exists, serve it
+			assetHandler := http.FileServer(http.FS(frontendSubFS))
+			assetHandler.ServeHTTP(c.Response(), c.Request())
+			return nil
+		}
+
+		// File doesn't exist, serve index.html for SPA routing
+		indexContent, err := fs.ReadFile(frontendSubFS, "index.html")
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "index.html not found")
+		}
+
+		// Serve index.html
+		c.Response().Header().Set("Content-Type", "text/html")
+		c.Response().Write(indexContent)
+		return nil
+	})
 
 	go func() {
 		e.Start(fmt.Sprintf("%s:%d", s.BindAddr, s.Port))

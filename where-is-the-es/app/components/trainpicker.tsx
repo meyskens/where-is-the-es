@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 
 interface TrainPickerProps {
-  onSelectTrain: (trainNumber: string) => void;
+  onSelectTrain?: (trainNumber: string) => void;
   initialTrain?: string;
 }
 
 const TrainPicker = ({ onSelectTrain, initialTrain = "453" }: TrainPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState(initialTrain);
+  const navigate = useNavigate();
 
   const trainOptions = [
     { value: "453", label: "ES 453 Brussels → Praha" },
@@ -19,7 +21,10 @@ const TrainPicker = ({ onSelectTrain, initialTrain = "453" }: TrainPickerProps) 
 
   const handleSelect = (value: string) => {
     setSelectedTrain(value);
-    onSelectTrain(value);
+    if (onSelectTrain) {
+      onSelectTrain(value);
+    }
+    navigate(`/train/${value}`);
     setIsOpen(false);
   };
 
