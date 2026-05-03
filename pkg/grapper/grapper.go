@@ -136,9 +136,22 @@ func (c *Client) FetchTrain(ctx context.Context, trainNumber string) (*TrainResp
 		return nil, fmt.Errorf("grapper: decode response: %w", err)
 	}
 
-	// Verify the title contains the train number.
+	// Verify the title contains the train number with exact match.
+	// Extract the train number from the title and compare exactly
+	// to avoid partial matches (e.g., "452" should not match "1452").
 	title := strings.TrimSpace(raw.Title)
-	if title == "" || !strings.Contains(title, num) {
+	if title == "" {
+		return nil, ErrTitleMismatch
+	}
+
+	// Extract the numeric part from the title
+	titleNum := stripPrefix(title)
+	if titleNum == "" {
+		return nil, ErrTitleMismatch
+	}
+
+	// Exact match: the numeric part of the title must equal the requested number
+	if titleNum != num {
 		return nil, ErrTitleMismatch
 	}
 
