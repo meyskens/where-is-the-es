@@ -81,8 +81,18 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 
 	// Serve static files with SPA fallback for client-side routing
 	e.GET("/*", func(c echo.Context) error {
-		// Try to open the requested file
-		path := c.Path()
+		// Get the actual request path
+		path := c.Request().URL.Path
+
+		// Remove leading slash
+		if len(path) > 0 && path[0] == '/' {
+			path = path[1:]
+		}
+
+		// Handle root path
+		if path == "" {
+			path = "index.html"
+		}
 
 		// Check if the file exists in the embedded filesystem
 		f, err := frontendSubFS.Open(path)
