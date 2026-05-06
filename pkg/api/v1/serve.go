@@ -25,7 +25,8 @@ type APIV1 struct {
 	compositionCache map[string]traindata.Composition
 	timetableCache   map[Service]*traindata.Trip
 
-	refreshTimer *time.Ticker
+	refreshTimer    *time.Ticker
+	nmbsLastRefresh time.Time
 
 	initDone bool
 
@@ -164,6 +165,10 @@ func (a *APIV1) findNextDeparture(trainNumber string) (string, bool) {
 }
 
 func (a *APIV1) refreshCache() {
+	refreshNMBS := a.nmbsFetcher != nil && time.Since(a.nmbsLastRefresh) >= 7*time.Minute
+	if refreshNMBS {
+		a.nmbsLastRefresh = time.Now()
+	}
 	for _, train := range europeansleeper.Trains {
 		composition, err := europeansleeper.GetComposition(train, a.tcURL)
 		if err != nil {
@@ -194,7 +199,7 @@ func (a *APIV1) refreshCache() {
 					}
 					cancel()
 				}
-				if a.nmbsFetcher != nil {
+				if refreshNMBS {
 					_, err := europeansleeper.EnhanceWithNMBS(a.nmbsFetcher, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with NMBS for train", train, "on date", date, ":", err)
