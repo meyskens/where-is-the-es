@@ -13,6 +13,7 @@ package ns
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -119,14 +120,29 @@ func (c *Client) GetTimetable(ctx context.Context, trainNumber string, date time
 	q.Set("train", num)
 	q.Set("omitCrowdForecast", "false")
 	if !date.IsZero() {
-		q.Set("dateTime", date.Format(time.RFC3339))
+		q.Set("dateTime", date.Format("2006-01-02"))
 	}
 
 	endpoint := c.baseURL + "/journey?" + q.Encode()
 
 	var raw journeyResponse
 	if err := c.do(ctx, endpoint, &raw); err != nil {
-		return nil, fmt.Errorf("ns: get journey: %w", err)
+		var httpErr *HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == 404 && !date.IsZero() {
+			// NS sometimes doesn't know about a train until the next calendar day;
+			// retry with date+1.
+			nextDay := date.Add(24 * time.Hour)
+			q2 := url.Values{}
+			q2.Set("train", num)
+			q2.Set("omitCrowdForecast", "false")
+			q2.Set("dateTime", nextDay.Format("2006-01-02"))
+			endpoint = c.baseURL + "/journey?" + q2.Encode()
+			if err2 := c.do(ctx, endpoint, &raw); err2 != nil {
+				return nil, fmt.Errorf("ns: get journey: %w", err2)
+			}
+		} else {
+			return nil, fmt.Errorf("ns: get journey: %w", err)
+		}
 	}
 
 	if len(raw.Payload.Stops) == 0 {
