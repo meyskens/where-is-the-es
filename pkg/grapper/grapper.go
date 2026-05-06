@@ -225,7 +225,16 @@ func stripPrefix(s string) string {
 	return ""
 }
 
-// parseTime parses a "HH:MM" time string and anchors it to the given date.
+// prahaLocation is the timezone for Praha (Prague), used for all GRAPP times.
+var prahaLocation = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/Prague")
+	if err != nil {
+		panic("grapper: failed to load Europe/Prague timezone: " + err.Error())
+	}
+	return loc
+}()
+
+// parseTime parses a "HH:MM" time string and anchors it to the given date in Praha timezone.
 func parseTime(date time.Time, t string) time.Time {
 	parts := strings.Split(t, ":")
 	if len(parts) != 2 {
@@ -236,5 +245,5 @@ func parseTime(date time.Time, t string) time.Time {
 	if err1 != nil || err2 != nil {
 		return time.Time{}
 	}
-	return time.Date(date.Year(), date.Month(), date.Day(), hour, min, 0, 0, time.UTC)
+	return time.Date(date.Year(), date.Month(), date.Day(), hour, min, 0, 0, prahaLocation)
 }
