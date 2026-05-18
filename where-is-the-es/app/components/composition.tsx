@@ -40,6 +40,7 @@ const uicNumberOverrides: Record<string, string> = {
   "61 81 71-71 463-6": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
   "61 81 71-71 462-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
   "61 81 71-71 456-0": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
+  "61 81 71-71 457-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
 };
 
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
