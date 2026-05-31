@@ -22,11 +22,13 @@ const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
   "474": {
     Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
     Couchette: '/images/Bvcmz-RDC-a.gif',
+    Seats: '/images/Bvcmz-RDC-a.gif',
     default: '/images/Bvcmz-RDC-a.gif',
   },
   "475": {
     Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
     Couchette: '/images/Bvcmz-RDC-a.gif',
+    Seats: '/images/Bvcmz-RDC-a.gif',
     default: '/images/Bvcmz-RDC-a.gif',
   },
 };
