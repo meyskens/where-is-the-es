@@ -16,6 +16,30 @@ func Test_parseComposition(t *testing.T) {
 		wantErr     bool
 	}{
 		{
+			name:        "parses new HTML structure with w-full class",
+			html:        testCompositionPageNew,
+			trainNumber: "452",
+			want: traindata.Composition{
+				Vehicles: map[string]traindata.VehicleType{
+					"LOC": traindata.VehicleTypeLocomotive,
+					"21":  traindata.VehicleTypeCouchette,
+					"20":  traindata.VehicleTypeCouchette,
+					"19":  traindata.VehicleTypeCouchette,
+					"18":  traindata.VehicleTypeCouchette,
+					"17":  traindata.VehicleTypeSleeper,
+					"16":  traindata.VehicleTypeSleeper,
+					"15":  traindata.VehicleTypeCouchette,
+					"14":  traindata.VehicleTypeCouchette,
+					"12":  traindata.VehicleTypeCouchette,
+					"13":  traindata.VehicleTypeSeats,
+					"10":  traindata.VehicleTypeCouchette,
+					"9":   traindata.VehicleTypeCouchette,
+				},
+				Order: []string{"LOC", "21", "20", "19", "18", "17", "16", "15", "14", "12", "13", "10", "9"},
+			},
+			wantErr: false,
+		},
+		{
 			name:        "parses valid composition",
 			html:        testCompositionPage,
 			trainNumber: "453",

@@ -141,7 +141,7 @@ func parseVehicle(z *html.Tokenizer) (traindata.VehicleType, string, error) {
 			}
 			if t.Data == "span" && isClassText {
 				z.Next()
-				text := string(z.Text())
+				text := strings.TrimSpace(string(z.Text()))
 				switch text {
 				case "Locomotive":
 					vehicleType = traindata.VehicleTypeLocomotive

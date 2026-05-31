@@ -1,5 +1,131 @@
 package europeansleeper
 
+// New HTML structure with w-full class and new vehicle types (Classic, Comfort Standard, Comfort Plus, Budget)
+const testCompositionPageNew = `
+    <div class="w-full text-center" id="452">
+        <h3>Train ES 452</h3>
+        <table class="margin-auto">
+            <tr>
+                <td>Prague hl.n. (main station)</td>
+                <td><span class="material-symbols-outlined">arrow_forward</span></td>
+                <td>Bruxelles-Midi</td>
+            </tr>
+            <tr>
+                <td>Sun 31 May 2026</td>
+                <td></td>
+                <td>Mon 01 June 2026</td>
+            </tr>
+        </table>
+        <div class="bg-light-gray coach coach-loc margin-top text-dark-aubergine">
+            <b></b>
+            <i></i>
+            <hr>
+            <p class="center-xy">
+                <span class="material-symbols-outlined">north</span>
+            </p>
+            <span class="text-xs">Locomotive</span>
+        </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">21</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">20</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">19</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">hotel</span>
+                                    </p>
+                <span class="text-xs">
+                    Comfort Standard                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">18</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">hotel</span>
+                                    </p>
+                <span class="text-xs">
+                    Comfort Standard                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">17</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">hotel</span>
+                                    </p>
+                <span class="text-xs">
+                    Comfort Plus                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">16</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">hotel</span>
+                                    </p>
+                <span class="text-xs">
+                    Comfort Plus                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">15</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                            <span class="material-symbols-outlined">person_pin</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">14</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">12</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">13</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_recline_extra</span>
+                                    </p>
+                <span class="text-xs">
+                    Budget                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">10</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                    <div class="bg-dark-aubergine coach text-white">
+                <h3 class="text-shock-orange">9</h3>
+                <p class="center-xy">
+                                            <span class="material-symbols-outlined">airline_seat_flat</span>
+                                    </p>
+                <span class="text-xs">
+                    Classic                </span>
+            </div>
+                <hr class="margin-y mob">
+    </div>
+`
+
 const testCompositionPage = `
 <!doctype html>
 <html lang="en">
