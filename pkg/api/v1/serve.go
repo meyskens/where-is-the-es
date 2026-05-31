@@ -13,6 +13,7 @@ import (
 	"github.com/meyskens/where-is-the-es/pkg/grapper"
 	"github.com/meyskens/where-is-the-es/pkg/nmbs"
 	"github.com/meyskens/where-is-the-es/pkg/ns"
+	"github.com/meyskens/where-is-the-es/pkg/sncfgc"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
 
@@ -35,9 +36,10 @@ type APIV1 struct {
 	nsClient      *ns.Client
 	nmbsFetcher   *nmbs.NMBSFetcher
 	grapperClient *grapper.Client
+	sncfgcClient  *sncfgc.Client
 }
 
-func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL string) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string) *APIV1 {
 	a := &APIV1{
 		compositionCache: make(map[string]traindata.Composition),
 		timetableCache:   make(map[Service]*traindata.Trip),
@@ -60,6 +62,9 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grappe
 	}
 	if grapperURL != "" {
 		a.grapperClient = grapper.NewClient(grapperURL)
+	}
+	if sncfgcSubscriptionKey != "" {
+		a.sncfgcClient = sncfgc.NewClient(sncfgcSubscriptionKey)
 	}
 	return a
 }
@@ -218,6 +223,14 @@ func (a *APIV1) refreshCache() {
 					_, err := europeansleeper.EnhanceWithGrapper(ctx, a.grapperClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with Grapper for train", train, "on date", date, ":", err)
+					}
+					cancel()
+				}
+				if a.sncfgcClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, err := europeansleeper.EnhanceWithSNCFGC(ctx, a.sncfgcClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with SNCF GC for train", train, "on date", date, ":", err)
 					}
 					cancel()
 				}
