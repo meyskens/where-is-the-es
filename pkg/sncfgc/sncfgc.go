@@ -237,7 +237,8 @@ func (c *Client) GetTimetable(ctx context.Context, trainNumber string, uicStatio
 		if s.Downtime != nil && *s.Downtime > 0 {
 			remainingDowntime := *s.Downtime
 			if s.InformationStatus.Delay != nil && *s.InformationStatus.Delay > 0 {
-				remainingDowntime = *s.Downtime - *s.InformationStatus.Delay
+				// Delay is in minutes, downtime is in seconds - convert delay to seconds
+				remainingDowntime = *s.Downtime - (*s.InformationStatus.Delay * 60)
 			}
 			if remainingDowntime > 0 {
 				stop.DepartureTime = stop.DepartureTime.Add(time.Duration(remainingDowntime) * time.Second)
