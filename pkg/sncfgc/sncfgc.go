@@ -223,6 +223,14 @@ func (c *Client) GetTimetable(ctx context.Context, trainNumber string, uicStatio
 		stop.DepartureTime = parseSNCFCGTime(s.ScheduledTime)
 		stop.RealDepartureTime = parseSNCFCGTime(s.ActualTime)
 
+		// If actualTime is null but delay is set, calculate real time from scheduled + delay
+		if stop.RealArrivalTime.IsZero() && s.InformationStatus.Delay != nil && *s.InformationStatus.Delay > 0 {
+			stop.RealArrivalTime = stop.ArrivalTime.Add(time.Duration(*s.InformationStatus.Delay) * time.Minute)
+		}
+		if stop.RealDepartureTime.IsZero() && s.InformationStatus.Delay != nil && *s.InformationStatus.Delay > 0 {
+			stop.RealDepartureTime = stop.DepartureTime.Add(time.Duration(*s.InformationStatus.Delay) * time.Minute)
+		}
+
 		// Add downtime to departure time (downtime is the seconds the train waits in station, we think a mistranslation of dwelltime)
 		// If there's a delay, subtract the delay from the downtime
 		// If remaining downtime > 0, train leaves punctually; otherwise it leaves immediately
