@@ -266,6 +266,12 @@ func (c *Client) GetTimetable(ctx context.Context, trainNumber string, uicStatio
 			stop.IsRealTime = true
 		}
 
+		// Cancellation detection
+		if isSuppressionStatus(s.InformationStatus.TrainStatus) {
+			stop.Cancelled = true
+			stop.IsRealTime = true
+		}
+
 		trip.Stops = append(trip.Stops, stop)
 	}
 
@@ -320,4 +326,12 @@ func parseSNCFCGTime(s string) time.Time {
 		return time.Time{}
 	}
 	return t
+}
+
+// isSuppressionStatus reports whether the given SNCF trainStatus value
+// indicates that the stop is cancelled (suppressed). SNCF uses values such as
+// "SUPPRESSION" and "SUPPRESSION_PARTIELLE"
+func isSuppressionStatus(status string) bool {
+	status = strings.ToUpper(strings.TrimSpace(status))
+	return strings.HasPrefix(status, "SUPPRESSION")
 }

@@ -241,6 +241,191 @@ func TestGetTimetable_EmptyUIC(t *testing.T) {
 	assert.Contains(t, err.Error(), "empty UIC station code")
 }
 
+func TestGetTimetable_Cancelled(t *testing.T) {
+	// Sample response from the SNCF Gares & Connexions API for a partially
+	// cancelled European Sleeper train (SUPPRESSION_PARTIELLE).
+	sampleResponse := `[
+  {
+    "shortTermInformations": [],
+    "composition": null,
+    "listeReservations": null,
+    "listServicesABord": [],
+    "brand": null,
+    "stationName": "Paris Gare du Nord",
+    "stopoverNumber": "4",
+    "isLeft": false,
+    "trainLength": null,
+    "JourneyStop": [
+      {
+        "scheduledTime": "2026-06-28T16:00:00+00:00",
+        "actualTime": null,
+        "informationStatus": {
+          "trainStatus": "SUPPRESSION_PARTIELLE",
+          "eventLevel": "Warning",
+          "delay": null
+        },
+        "platform": {
+          "track": "",
+          "isTrackactive": false,
+          "trackGroupTitle": null,
+          "trackGroupValue": null,
+          "backgroundColor": null,
+          "trackPosition": null
+        },
+        "statusModification": null,
+        "shortTermInformations": [],
+        "stationName": "Paris Gare du Nord",
+        "downtime": null,
+        "theoreticalOccupancy": null,
+        "realOccupancy": null,
+        "uic": "0087271007",
+        "isNewOrigin": false,
+        "isNewDestination": false
+      },
+      {
+        "scheduledTime": "2026-06-28T18:18:00+00:00",
+        "actualTime": "2026-06-28T20:18:00+00:00",
+        "informationStatus": {
+          "trainStatus": "SUPPRESSION_PARTIELLE",
+          "eventLevel": "Warning",
+          "delay": null
+        },
+        "platform": {
+          "track": "",
+          "isTrackactive": false,
+          "trackGroupTitle": null,
+          "trackGroupValue": null,
+          "backgroundColor": null,
+          "trackPosition": null
+        },
+        "statusModification": null,
+        "shortTermInformations": [],
+        "stationName": "Aulnoye-Aymeries",
+        "downtime": 900,
+        "theoreticalOccupancy": null,
+        "realOccupancy": null,
+        "uic": "0087295600",
+        "isNewOrigin": false,
+        "isNewDestination": false
+      },
+      {
+        "scheduledTime": "2026-06-28T07:00:00+00:00",
+        "actualTime": "2026-06-28T09:00:00+00:00",
+        "informationStatus": {
+          "trainStatus": "SUPPRESSION_PARTIELLE",
+          "eventLevel": "Warning",
+          "delay": null
+        },
+        "platform": {
+          "track": "",
+          "isTrackactive": false,
+          "trackGroupTitle": null,
+          "trackGroupValue": null,
+          "backgroundColor": null,
+          "trackPosition": null
+        },
+        "statusModification": null,
+        "shortTermInformations": [],
+        "stationName": "Berlin-Gesundbrunnen",
+        "downtime": null,
+        "theoreticalOccupancy": null,
+        "realOccupancy": null,
+        "uic": "0080077990",
+        "isNewOrigin": false,
+        "isNewDestination": true
+      }
+    ],
+    "direction": "Departure",
+    "trainNumber": "475",
+    "scheduledTime": "2026-06-28T16:00:00+00:00",
+    "actualTime": "2026-06-28T18:00:00+00:00",
+    "trainType": "European Sleeper",
+    "trainMode": "TRAIN",
+    "platform": {
+      "track": "",
+      "isTrackactive": false,
+      "trackGroupTitle": null,
+      "trackGroupValue": null,
+      "backgroundColor": null,
+      "trackPosition": null
+    },
+    "informationStatus": {
+      "trainStatus": "SUPPRESSION_PARTIELLE",
+      "eventLevel": "Warning",
+      "delay": null
+    },
+    "traffic": {
+      "origin": "Paris Gare du Nord",
+      "destination": "Berlin-Gesundbrunnen",
+      "oldOrigin": "",
+      "oldDestination": "",
+      "eventStatus": "SUPPRESSION",
+      "eventLevel": "Warning"
+    },
+    "statusModification": null,
+    "TrafficDetailsUrl": "https://www.sncf-voyageurs.com/...",
+    "uic": "0087271007",
+    "missionCode": null,
+    "trainLine": null,
+    "isGL": false,
+    "presentation": {
+      "colorCode": "#1d1e27",
+      "textColorCode": "#FFFFFF"
+    },
+    "stops": [
+      "Paris Gare du Nord",
+      "Aulnoye-Aymeries",
+      "Berlin-Gesundbrunnen"
+    ],
+    "alternativeMeans": null
+  }
+]`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(sampleResponse))
+	}))
+	defer server.Close()
+
+	client := NewClient("test-subscription-key", WithBaseURL(server.URL))
+
+	date := time.Date(2026, 6, 28, 16, 0, 0, 0, time.UTC)
+	trip, err := client.GetTimetable(context.Background(), "475", "0087271007", date, true)
+
+	require.NoError(t, err)
+	require.NotNil(t, trip)
+	assert.Equal(t, "475", trip.TrainNumber)
+	assert.Len(t, trip.Stops, 3)
+
+	// Every stop should be marked as cancelled because the trainStatus is
+	// SUPPRESSION_PARTIELLE on each JourneyStop.
+	for i, stop := range trip.Stops {
+		assert.Truef(t, stop.Cancelled, "stop %d (%s) should be cancelled", i, stop.StationName)
+		assert.Truef(t, stop.IsRealTime, "stop %d (%s) should be real-time", i, stop.StationName)
+	}
+}
+
+func TestIsSuppressionStatus(t *testing.T) {
+	tests := []struct {
+		status   string
+		expected bool
+	}{
+		{"SUPPRESSION", true},
+		{"SUPPRESSION_PARTIELLE", true},
+		{"suppression_partielle", true},
+		{"  Suppression ", true},
+		{"RETARD", false},
+		{"Ontime", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isSuppressionStatus(tt.status))
+		})
+	}
+}
+
 func TestTrainDetailsResponseParsing(t *testing.T) {
 	jsonData := `{
 		"trainNumber": "475",
