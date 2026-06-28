@@ -20,12 +20,14 @@ const vehicleTypeToImage: Record<string, string> = {
 
 const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
   "474": {
+    Locomotive: '/images/br188-tcs.webp',
     Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
     Couchette: '/images/Bvcmz-RDC-a.gif',
     Seats: '/images/Bvcmz-RDC-a.gif',
     default: '/images/Bvcmz-RDC-a.gif',
   },
   "475": {
+    Locomotive: '/images/br188-tcs.webp',
     Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
     Couchette: '/images/Bvcmz-RDC-a.gif',
     Seats: '/images/Bvcmz-RDC-a.gif',
