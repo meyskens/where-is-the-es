@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
 	"github.com/meyskens/where-is-the-es/pkg/grapper"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
@@ -92,12 +93,12 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 		}
 
 		if !s.RealArrivalTime.IsZero() {
-			trip.Stops[i].RealArrivalTime = s.RealArrivalTime
+			trip.Stops[i].RealArrivalTime = reanchorToPlanned(s.RealArrivalTime, trip.Stops[i].ArrivalTime)
 		} else if !trip.Stops[i].ArrivalTime.IsZero() {
 			trip.Stops[i].RealArrivalTime = trip.Stops[i].ArrivalTime
 		}
 		if !s.RealDepartureTime.IsZero() {
-			trip.Stops[i].RealDepartureTime = s.RealDepartureTime
+			trip.Stops[i].RealDepartureTime = reanchorToPlanned(s.RealDepartureTime, trip.Stops[i].DepartureTime)
 		} else if !trip.Stops[i].DepartureTime.IsZero() {
 			trip.Stops[i].RealDepartureTime = trip.Stops[i].DepartureTime
 		}
@@ -105,10 +106,10 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 			// Grapper has no planned times, skip planned time updates
 		} else {
 			if !s.ArrivalTime.IsZero() {
-				trip.Stops[i].ArrivalTime = s.ArrivalTime
+				trip.Stops[i].ArrivalTime = reanchorToPlanned(s.ArrivalTime, trip.Stops[i].ArrivalTime)
 			}
 			if !s.DepartureTime.IsZero() {
-				trip.Stops[i].DepartureTime = s.DepartureTime
+				trip.Stops[i].DepartureTime = reanchorToPlanned(s.DepartureTime, trip.Stops[i].DepartureTime)
 			}
 		}
 
@@ -127,4 +128,17 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 // (country code prefix 54, i.e. 54xxxxx).
 func isCzechUIC(uic int) bool {
 	return uic >= 5400000 && uic < 5500000
+}
+
+// reanchorToPlanned realigns a time coming from the GRAPP feed (which is
+// has no date and therefore carries the wrong calendar day for next-day stops)
+func reanchorToPlanned(grapperTime, planned time.Time) time.Time {
+	if grapperTime.IsZero() || planned.IsZero() {
+		return grapperTime
+	}
+	return time.Date(
+		planned.Year(), planned.Month(), planned.Day(),
+		grapperTime.Hour(), grapperTime.Minute(), grapperTime.Second(), grapperTime.Nanosecond(),
+		planned.Location(),
+	)
 }
