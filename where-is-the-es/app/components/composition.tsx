@@ -35,11 +35,6 @@ const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
   },
 };
 
-const newLivery = [
-  "61 80 50-71 202-4",
-  "56 80 50-71 118-9",
-]
-
 const uicNumberOverrides: Record<string, string> = {
   "61 81 71-71 463-6": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
   "61 81 71-71 462-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
@@ -47,6 +42,8 @@ const uicNumberOverrides: Record<string, string> = {
   "61 81 71-71 457-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.gif',
   "51 80 22-91 711-7": '/images/Bimz264-mm-a.gif',
   "51 80-90 702-2": '/images/Bimz264-mm-a.gif',
+  "61 80 50-71 202-4": '/images/Bvcmz248-euro-chouchette-a.webp',
+  "56 80 50-71 118-9": '/images/Bvcmz248-euro-chouchette-a.webp',
 };
 
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
@@ -75,9 +72,6 @@ export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber 
   const getVehicleImage = (vehicle: Vehicle): string => {
     if (uicNumberOverrides[vehicle.uicNumber]) {
       return uicNumberOverrides[vehicle.uicNumber];
-    }
-    if (newLivery.indexOf(vehicle.uicNumber) > -1) {
-      return '/images/Bvcmz248-euro-chouchette-a.webp';
     }
     const override = trainImageOverrides[trainNumber]?.[vehicle.type];
     if (override) {
