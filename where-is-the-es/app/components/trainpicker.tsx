@@ -17,6 +17,8 @@ const TrainPicker = ({ onSelectTrain, initialTrain = "453" }: TrainPickerProps) 
     { value: "452", label: "ES 452 Praha → Brussels" },
     { value: "474", label: "ES 474 Berlin → Paris" },
     { value: "475", label: "ES 475 Paris → Berlin" },
+    { value: "400", label: "ES 400 Milano → Brussels" },
+    { value: "401", label: "ES 401 Brussels → Milano" },
   ];
 
   const handleSelect = (value: string) => {
