@@ -33,6 +33,16 @@ const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
     Seats: '/images/Bvcmz-RDC-a.gif',
     default: '/images/Bvcmz-RDC-a.gif',
   },
+  "400": {
+    Sleeper: '/images/WLABmz-7070-b.webp',
+    Couchette: '/images/Bcmh-OTEX-2024-b.gif',
+    Seats: '/images/Bimz264-mm-a.gif',
+  },
+  "401": {
+    Sleeper: '/images/WLABmz-7070-b.webp',
+    Couchette: '/images/Bcmh-OTEX-2024-b.gif',
+    Seats: '/images/Bimz264-mm-a.gif',
+  },
 };
 
 const uicNumberOverrides: Record<string, string> = {
