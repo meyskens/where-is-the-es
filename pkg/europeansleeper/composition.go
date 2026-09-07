@@ -19,6 +19,8 @@ var trainRunIDs = map[string]string{
 	"452": "2",
 	"475": "5",
 	"474": "6",
+	"400": "8",
+	"401": "7",
 }
 
 func GetComposition(trainNumber string, tcURL string) (traindata.Composition, error) {
