@@ -59,6 +59,9 @@ const uicNumberOverrides: Record<string, string> = {
   "61 80 50-71 203-2": '/images/Bvcmz248-euro-chouchette-a.webp',
   "51 80 50-70 138-3": '/images/Bcmh-OTEX-2024-b.gif',
   "51 80 50-70 118-5": '/images/Bcmh-OTEX-2024-b.gif',
+  "61 80 50-91 003-7": "/images/Bvcmz-RDC-a.gif",
+  "61 80 50-91 046-1": "/images/Bvcmz-RDC-a.gif",
+  "61 80 50-91 044-6": "/images/Bvcmz-RDC-a.gif",
 };
 
 export const TrainComposition: React.FC<TrainCompositionProps> = ({ trainNumber }) => {
