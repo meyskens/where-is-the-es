@@ -11,8 +11,12 @@ import (
 )
 
 // EnhanceWithDB fills realtime arrival/departure information on trip stops
-// whose UIC code is in the German number range (UIC country prefix 80) using
-// the Deutsche Bahn RIS-Journeys API. It is a no-op when the trip has no
+// using the Deutsche Bahn RIS-Journeys API. DB indexes journeys by train
+// number and returns events for the entire international run (station IDs
+// are EVA numbers, not Germany-specific), so once a journey is found its
+// data is applied to every stop in the trip, not just the German ones. The
+// presence of a German stop is only used as a cheap signal that DB is likely
+// to know about this journey at all - it is a no-op when the trip has no
 // German stops.
 func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Trip) (int, error) {
 	if client == nil || trip == nil {
@@ -76,10 +80,6 @@ func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Tri
 
 	enrichedStops := 0
 	for i := range trip.Stops {
-		if !isGermanUIC(trip.Stops[i].StationUIC) {
-			continue
-		}
-
 		key := normalizeStationName(trip.Stops[i].StationName)
 		s, ok := dbByName[key]
 		if !ok {
