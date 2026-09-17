@@ -3,7 +3,12 @@ package traindata
 type DataSource int
 
 const (
-	DataSourceNMBS DataSource = iota
+	// DataSourceUnknown is the zero value of DataSource. It represents a
+	// stop for which no data source has been selected as preferred. It MUST
+	// stay first in this iota block so that unset PrefferedDataSource fields
+	// do not accidentally read as DataSourceNMBS.
+	DataSourceUnknown DataSource = iota
+	DataSourceNMBS
 	DataSourceNS
 	DataSourceDB
 	DataSourceCD
@@ -14,6 +19,8 @@ const (
 
 func (d DataSource) String() string {
 	switch d {
+	case DataSourceUnknown:
+		return "unknown"
 	case DataSourceNMBS:
 		return "nmbs"
 	case DataSourceNS:

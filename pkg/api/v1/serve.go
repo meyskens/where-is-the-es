@@ -288,6 +288,13 @@ func preserveRealtimeStops(current, previous *traindata.Trip) {
 		current.Stops[i].RealDepartureTime = oldStop.RealDepartureTime
 		current.Stops[i].RealPlatform = oldStop.RealPlatform
 		current.Stops[i].IsRealTime = oldStop.IsRealTime
+
+		if current.Stops[i].PrefferedDataSource == traindata.DataSourceUnknown {
+			current.Stops[i].PrefferedDataSource = oldStop.PrefferedDataSource
+		}
+		if len(current.Stops[i].DataSources) == 0 {
+			current.Stops[i].DataSources = oldStop.DataSources
+		}
 	}
 }
 
