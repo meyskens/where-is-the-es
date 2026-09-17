@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/meyskens/where-is-the-es/pkg/arenaways"
 	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/europeansleeper"
 	"github.com/meyskens/where-is-the-es/pkg/grapper"
@@ -26,17 +27,19 @@ type APIV1 struct {
 	compositionCache map[string]traindata.Composition
 	timetableCache   map[Service]*traindata.Trip
 
-	refreshTimer    *time.Ticker
-	nmbsLastRefresh time.Time
+	refreshTimer         *time.Ticker
+	nmbsLastRefresh      time.Time
+	arenawaysLastRefresh time.Time
 
 	initDone bool
 
-	tcURL         string
-	bahnClient    *bahn.Client
-	nsClient      *ns.Client
-	nmbsFetcher   *nmbs.NMBSFetcher
-	grapperClient *grapper.Client
-	sncfgcClient  *sncfgc.Client
+	tcURL            string
+	bahnClient       *bahn.Client
+	nsClient         *ns.Client
+	nmbsFetcher      *nmbs.NMBSFetcher
+	arenawaysFetcher *arenaways.ArenaWaysFetcher
+	grapperClient    *grapper.Client
+	sncfgcClient     *sncfgc.Client
 }
 
 func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string) *APIV1 {
@@ -58,6 +61,13 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grappe
 			log.Println("Failed to initialise NMBS fetcher:", err)
 		} else {
 			a.nmbsFetcher = fetcher
+		}
+
+		arenaFetcher, err := arenaways.NewArenaWaysFetcher(flareSolverrURL)
+		if err != nil {
+			log.Println("Failed to initialise Arenaways fetcher:", err)
+		} else {
+			a.arenawaysFetcher = arenaFetcher
 		}
 	}
 	if grapperURL != "" {
@@ -174,6 +184,10 @@ func (a *APIV1) refreshCache() {
 	if refreshNMBS {
 		a.nmbsLastRefresh = time.Now()
 	}
+	refreshArenaways := a.arenawaysFetcher != nil && time.Since(a.arenawaysLastRefresh) >= 7*time.Minute
+	if refreshArenaways {
+		a.arenawaysLastRefresh = time.Now()
+	}
 	for _, train := range europeansleeper.Trains {
 		composition, err := europeansleeper.GetComposition(train, a.tcURL)
 		if err != nil {
@@ -217,6 +231,12 @@ func (a *APIV1) refreshCache() {
 						log.Println("Failed to enhance trip with NS for train", train, "on date", date, ":", err)
 					}
 					cancel()
+				}
+				if refreshArenaways {
+					_, err := europeansleeper.EnhanceWithArenaways(a.arenawaysFetcher, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with Arenaways for train", train, "on date", date, ":", err)
+					}
 				}
 				if a.grapperClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
