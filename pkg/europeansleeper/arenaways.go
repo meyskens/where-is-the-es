@@ -11,9 +11,9 @@ import (
 // trip stops whose UIC code is in the Italian number range (UIC country
 // prefix 83) using the Arenaways train-status page. It is a no-op when
 // the trip has no Italian stops or no ArenaWaysFetcher is configured.
-func EnhanceWithArenaways(fetcher *arenaways.ArenaWaysFetcher, trip *traindata.Trip) (int, error) {
+func EnhanceWithArenaways(fetcher *arenaways.ArenaWaysFetcher, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if fetcher == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasIT := false
@@ -25,7 +25,7 @@ func EnhanceWithArenaways(fetcher *arenaways.ArenaWaysFetcher, trip *traindata.T
 		}
 	}
 	if !hasIT {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	log.Println("Enhancing trip with Arenaways for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- Italian stops:", italianStops)
@@ -33,7 +33,7 @@ func EnhanceWithArenaways(fetcher *arenaways.ArenaWaysFetcher, trip *traindata.T
 	stops, err := fetcher.FetchTimetable(trip.TrainNumber)
 	if err != nil {
 		log.Println("Failed to fetch Arenaways timetable for train", trip.TrainNumber, ":", err)
-		return 0, err
+		return 0, nil, err
 	}
 
 	log.Println("Fetched", len(stops), "Arenaways stops for train", trip.TrainNumber)
@@ -106,7 +106,7 @@ func EnhanceWithArenaways(fetcher *arenaways.ArenaWaysFetcher, trip *traindata.T
 
 	log.Println("Arenaways enrichment for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- enriched", enrichedStops, "of", italianStops, "Italian stops")
 
-	return enrichedStops, nil
+	return enrichedStops, stops, nil
 }
 
 // isItalianUIC reports whether a UIC station code belongs to Italy

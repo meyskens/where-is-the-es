@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/meyskens/where-is-the-es/pkg/bahn"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
@@ -13,10 +14,11 @@ import (
 // EnhanceWithDB fills realtime arrival/departure information on trip stops
 // whose UIC code is in the German number range (UIC country prefix 80) using
 // the Deutsche Bahn RIS-Journeys API. It is a no-op when the trip has no
-// German stops.
-func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Trip) (int, error) {
+// German stops. It returns the number of enriched stops, the raw stops
+// fetched from DB, and any error.
+func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if client == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasDE := false
@@ -28,7 +30,7 @@ func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Tri
 		}
 	}
 	if !hasDE {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	stops, err := client.GetStops(ctx, trip.TrainNumber, trip.Date)
@@ -50,7 +52,7 @@ func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Tri
 			}
 		}
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 	}
 
@@ -132,7 +134,25 @@ func EnhanceWithDB(ctx context.Context, client *bahn.Client, trip *traindata.Tri
 		enrichedStops++
 	}
 
-	return enrichedStops, nil
+	return enrichedStops, dbStopsToTrainData(stops), nil
+}
+
+// dbStopsToTrainData converts a slice of bahn.Stop into traindata.Stop so the
+// debug cache can store raw stops from all sources in a uniform type.
+func dbStopsToTrainData(stops []bahn.Stop) []traindata.Stop {
+	out := make([]traindata.Stop, 0, len(stops))
+	for _, s := range stops {
+		uic, _ := strconv.Atoi(s.EvaNumber)
+		out = append(out, traindata.Stop{
+			StationName:   s.Name,
+			StationUIC:    uic,
+			ArrivalTime:   s.Arrival,
+			DepartureTime: s.Departure,
+			Platform:      s.Platform,
+			RealPlatform:  s.PlatformRealtime,
+		})
+	}
+	return out
 }
 
 // isGermanUIC reports whether a UIC station code belongs to Germany

@@ -24,8 +24,11 @@ type Service struct {
 }
 
 type APIV1 struct {
-	compositionCache map[string]traindata.Composition
-	timetableCache   map[Service]*traindata.Trip
+	compositionCache   map[string]traindata.Composition
+	timetableCache     map[Service]*traindata.Trip
+	baseTimetableCache map[Service]*traindata.Trip
+	rawStopsCache      map[Service]map[string][]traindata.Stop
+	rawStopsErrorCache map[Service]map[string]string
 
 	refreshTimer         *time.Ticker
 	nmbsLastRefresh      time.Time
@@ -44,10 +47,13 @@ type APIV1 struct {
 
 func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string) *APIV1 {
 	a := &APIV1{
-		compositionCache: make(map[string]traindata.Composition),
-		timetableCache:   make(map[Service]*traindata.Trip),
-		refreshTimer:     time.NewTicker(1 * time.Minute),
-		tcURL:            tcURL,
+		compositionCache:   make(map[string]traindata.Composition),
+		timetableCache:     make(map[Service]*traindata.Trip),
+		baseTimetableCache: make(map[Service]*traindata.Trip),
+		rawStopsCache:      make(map[Service]map[string][]traindata.Stop),
+		rawStopsErrorCache: make(map[Service]map[string]string),
+		refreshTimer:       time.NewTicker(1 * time.Minute),
+		tcURL:              tcURL,
 	}
 	if dbAPIKey != "" && dbClientID != "" {
 		a.bahnClient = bahn.NewClient(dbAPIKey, dbClientID)
@@ -134,6 +140,8 @@ func (a *APIV1) Register(e *echo.Echo) {
 		}
 		return c.JSON(200, tt.ToBrowser())
 	})
+
+	a.registerDebugRoutes(e)
 }
 
 func (a *APIV1) refresher() {
@@ -210,47 +218,92 @@ func (a *APIV1) refreshCache() {
 					log.Println("Failed to get trip for train", train, "on date", date, ":", err)
 					continue
 				}
+
+				// Store a copy of the base timetable before any realtime
+				// enhancement so the debug interface can show the raw ES
+				// data separately from the calculated/merged trip.
+				baseTrip := &traindata.Trip{
+					TrainNumber: trip.TrainNumber,
+					Date:        trip.Date,
+					Stops:       make([]traindata.Stop, len(trip.Stops)),
+					Composition: trip.Composition,
+					IsRunning:   trip.IsRunning,
+				}
+				copy(baseTrip.Stops, trip.Stops)
+				a.baseTimetableCache[service] = baseTrip
+
+				// Reset the raw-stops cache for this service so each
+				// refresh starts clean.
+				rawStops := make(map[string][]traindata.Stop)
+				a.rawStopsCache[service] = rawStops
+				rawErrors := make(map[string]string)
+				a.rawStopsErrorCache[service] = rawErrors
+
 				if a.bahnClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					_, err := europeansleeper.EnhanceWithDB(ctx, a.bahnClient, trip)
+					_, raw, err := europeansleeper.EnhanceWithDB(ctx, a.bahnClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with DB for train", train, "on date", date, ":", err)
+						rawErrors["bahn"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["bahn"] = raw
 					}
 					cancel()
 				}
 				if refreshNMBS {
-					_, err := europeansleeper.EnhanceWithNMBS(a.nmbsFetcher, trip)
+					_, raw, err := europeansleeper.EnhanceWithNMBS(a.nmbsFetcher, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with NMBS for train", train, "on date", date, ":", err)
+						rawErrors["nmbs"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["nmbs"] = raw
 					}
 				}
 				if a.nsClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					_, err := europeansleeper.EnhanceWithNS(ctx, a.nsClient, trip)
+					_, raw, err := europeansleeper.EnhanceWithNS(ctx, a.nsClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with NS for train", train, "on date", date, ":", err)
+						rawErrors["ns"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["ns"] = raw
 					}
 					cancel()
 				}
 				if refreshArenaways {
-					_, err := europeansleeper.EnhanceWithArenaways(a.arenawaysFetcher, trip)
+					_, raw, err := europeansleeper.EnhanceWithArenaways(a.arenawaysFetcher, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with Arenaways for train", train, "on date", date, ":", err)
+						rawErrors["arenaways"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["arenaways"] = raw
 					}
 				}
 				if a.grapperClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					_, err := europeansleeper.EnhanceWithGrapper(ctx, a.grapperClient, trip)
+					_, raw, err := europeansleeper.EnhanceWithGrapper(ctx, a.grapperClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with Grapper for train", train, "on date", date, ":", err)
+						rawErrors["grapper"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["grapper"] = raw
 					}
 					cancel()
 				}
 				if a.sncfgcClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					_, err := europeansleeper.EnhanceWithSNCFGC(ctx, a.sncfgcClient, trip)
+					_, raw, err := europeansleeper.EnhanceWithSNCFGC(ctx, a.sncfgcClient, trip)
 					if err != nil {
 						log.Println("Failed to enhance trip with SNCF GC for train", train, "on date", date, ":", err)
+						rawErrors["sncfgc"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["sncfgc"] = raw
 					}
 					cancel()
 				}

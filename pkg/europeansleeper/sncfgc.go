@@ -15,9 +15,9 @@ import (
 // whose UIC code is in the French number range (UIC country prefix 87) using
 // the SNCF Gares & Connexions API. It is a no-op when the trip has no French stops
 // or no SNCF GC client is configured.
-func EnhanceWithSNCFGC(ctx context.Context, client *sncfgc.Client, trip *traindata.Trip) (int, error) {
+func EnhanceWithSNCFGC(ctx context.Context, client *sncfgc.Client, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if client == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasFR := false
@@ -36,7 +36,7 @@ func EnhanceWithSNCFGC(ctx context.Context, client *sncfgc.Client, trip *trainda
 		}
 	}
 	if !hasFR {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	log.Println("Enhancing trip with SNCF GC for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- French stops:", frenchStops)
@@ -55,12 +55,12 @@ func EnhanceWithSNCFGC(ctx context.Context, client *sncfgc.Client, trip *trainda
 	if err != nil {
 		if errors.Is(err, sncfgc.ErrNotFound) {
 			log.Println("SNCF GC: no matching train for", trip.TrainNumber, "at UIC", firstFrenchStopUIC)
-			return 0, nil
+			return 0, nil, nil
 		}
 		// Log the full error for debugging
 		log.Printf("Failed to fetch SNCF GC timetable for train %s at UIC %s on date %s: %v",
 			trip.TrainNumber, firstFrenchStopUIC, trip.Date.Format("2006-01-02"), err)
-		return 0, err
+		return 0, nil, err
 	}
 
 	log.Println("Fetched", len(sncfgcTrip.Stops), "SNCF GC stops for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"))
@@ -149,7 +149,7 @@ func EnhanceWithSNCFGC(ctx context.Context, client *sncfgc.Client, trip *trainda
 
 	log.Println("SNCF GC enrichment for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- enriched", enrichedStops, "of", frenchStops, "French stops")
 
-	return enrichedStops, nil
+	return enrichedStops, sncfgcTrip.Stops, nil
 }
 
 // isFrenchUIC reports whether a UIC station code belongs to France

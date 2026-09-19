@@ -12,9 +12,9 @@ import (
 // whose UIC code is in the Dutch number range (UIC country prefix 84) using
 // the NS Reisinformatie API. It is a no-op when the trip has no Dutch stops
 // or no NS client is configured.
-func EnhanceWithNS(ctx context.Context, client *ns.Client, trip *traindata.Trip) (int, error) {
+func EnhanceWithNS(ctx context.Context, client *ns.Client, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if client == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasNL := false
@@ -26,7 +26,7 @@ func EnhanceWithNS(ctx context.Context, client *ns.Client, trip *traindata.Trip)
 		}
 	}
 	if !hasNL {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	log.Println("Enhancing trip with NS for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- Dutch stops:", dutchStops)
@@ -34,7 +34,7 @@ func EnhanceWithNS(ctx context.Context, client *ns.Client, trip *traindata.Trip)
 	nsTrip, err := client.GetTimetable(ctx, trip.TrainNumber, trip.Date)
 	if err != nil {
 		log.Println("Failed to fetch NS timetable for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), ":", err)
-		return 0, err
+		return 0, nil, err
 	}
 
 	log.Println("Fetched", len(nsTrip.Stops), "NS stops for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"))
@@ -123,7 +123,7 @@ func EnhanceWithNS(ctx context.Context, client *ns.Client, trip *traindata.Trip)
 
 	log.Println("NS enrichment for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- enriched", enrichedStops, "of", dutchStops, "Dutch stops")
 
-	return enrichedStops, nil
+	return enrichedStops, nsTrip.Stops, nil
 }
 
 // isDutchUIC reports whether a UIC station code belongs to the Netherlands

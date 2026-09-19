@@ -13,9 +13,9 @@ import (
 // whose UIC code is in the Belgian number range (UIC country prefix 88) using
 // the SNCB/NMBS delay-certificate scrape. It is a no-op when the trip has no
 // Belgian stops or no NMBSFetcher is configured.
-func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, error) {
+func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if fetcher == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasBE := false
@@ -27,7 +27,7 @@ func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, erro
 		}
 	}
 	if !hasBE {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	log.Println("Enhancing trip with NMBS for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- Belgian stops:", belgianStops)
@@ -44,7 +44,7 @@ func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, erro
 		}
 		if err != nil {
 			log.Println("Failed to fetch NMBS timetable for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), ":", err)
-			return 0, err
+			return 0, nil, err
 		}
 	}
 
@@ -118,7 +118,7 @@ func EnhanceWithNMBS(fetcher *nmbs.NMBSFetcher, trip *traindata.Trip) (int, erro
 
 	log.Println("NMBS enrichment for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- enriched", enrichedStops, "of", belgianStops, "Belgian stops")
 
-	return enrichedStops, nil
+	return enrichedStops, stops, nil
 }
 
 // isBelgianUIC reports whether a UIC station code belongs to Belgium

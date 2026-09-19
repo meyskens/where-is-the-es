@@ -14,9 +14,9 @@ import (
 // whose UIC code is in the Czech number range (UIC country prefix 54) using
 // a private GRAPP to JSON instance. It is a no-op when the trip has no Czech
 // stops or no grapper client is configured.
-func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *traindata.Trip) (int, error) {
+func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *traindata.Trip) (int, []traindata.Stop, error) {
 	if client == nil || trip == nil {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	hasCZ := false
@@ -28,7 +28,7 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 		}
 	}
 	if !hasCZ {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	log.Println("Enhancing trip with Grapper for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- Czech stops:", czechStops)
@@ -37,10 +37,10 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 	if err != nil {
 		if errors.Is(err, grapper.ErrNotFound) || errors.Is(err, grapper.ErrTitleMismatch) {
 			log.Println("Grapper: no matching train for", trip.TrainNumber, ":", err)
-			return 0, nil
+			return 0, nil, nil
 		}
 		log.Println("Failed to fetch Grapper timetable for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), ":", err)
-		return 0, err
+		return 0, nil, err
 	}
 
 	log.Println("Fetched", len(grapperTrip.Stops), "Grapper stops for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"))
@@ -121,7 +121,7 @@ func EnhanceWithGrapper(ctx context.Context, client *grapper.Client, trip *train
 
 	log.Println("Grapper enrichment for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), "- enriched", enrichedStops, "of", czechStops, "Czech stops")
 
-	return enrichedStops, nil
+	return enrichedStops, grapperTrip.Stops, nil
 }
 
 // isCzechUIC reports whether a UIC station code belongs to the Czech Republic
