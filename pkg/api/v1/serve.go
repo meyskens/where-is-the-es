@@ -233,40 +233,40 @@ func (a *APIV1) refreshCache() {
 				a.baseTimetableCache[service] = baseTrip
 
 				// Reset the raw-stops cache for this service so each
-			// refresh starts clean. NMBS and Arenaways are
-			// rate-limited to one fetch every 7 minutes, so on the
-			// cycles where they are not refreshed we preserve their
-			// previous raw stops / error so the debug interface keeps
-			// showing the last known result instead of wiping it.
-			var prevNMBSStops, prevArenawaysStops []traindata.Stop
-			var prevNMBSErr, prevArenawaysErr string
-			var hasPrevNMBSErr, hasPrevArenawaysErr bool
-			if prev, ok := a.rawStopsCache[service]; ok {
-				prevNMBSStops = prev["nmbs"]
-				prevArenawaysStops = prev["arenaways"]
-			}
-			if prevErrs, ok := a.rawStopsErrorCache[service]; ok {
-				prevNMBSErr, hasPrevNMBSErr = prevErrs["nmbs"]
-				prevArenawaysErr, hasPrevArenawaysErr = prevErrs["arenaways"]
-			}
+				// refresh starts clean. NMBS and Arenaways are
+				// rate-limited to one fetch every 7 minutes, so on the
+				// cycles where they are not refreshed we preserve their
+				// previous raw stops / error so the debug interface keeps
+				// showing the last known result instead of wiping it.
+				var prevNMBSStops, prevArenawaysStops []traindata.Stop
+				var prevNMBSErr, prevArenawaysErr string
+				var hasPrevNMBSErr, hasPrevArenawaysErr bool
+				if prev, ok := a.rawStopsCache[service]; ok {
+					prevNMBSStops = prev["nmbs"]
+					prevArenawaysStops = prev["arenaways"]
+				}
+				if prevErrs, ok := a.rawStopsErrorCache[service]; ok {
+					prevNMBSErr, hasPrevNMBSErr = prevErrs["nmbs"]
+					prevArenawaysErr, hasPrevArenawaysErr = prevErrs["arenaways"]
+				}
 
-			rawStops := make(map[string][]traindata.Stop)
-			a.rawStopsCache[service] = rawStops
-			rawErrors := make(map[string]string)
-			a.rawStopsErrorCache[service] = rawErrors
+				rawStops := make(map[string][]traindata.Stop)
+				a.rawStopsCache[service] = rawStops
+				rawErrors := make(map[string]string)
+				a.rawStopsErrorCache[service] = rawErrors
 
-			if !refreshNMBS && prevNMBSStops != nil {
-				rawStops["nmbs"] = prevNMBSStops
-			}
-			if !refreshNMBS && hasPrevNMBSErr {
-				rawErrors["nmbs"] = prevNMBSErr
-			}
-			if !refreshArenaways && prevArenawaysStops != nil {
-				rawStops["arenaways"] = prevArenawaysStops
-			}
-			if !refreshArenaways && hasPrevArenawaysErr {
-				rawErrors["arenaways"] = prevArenawaysErr
-			}
+				if !refreshNMBS && prevNMBSStops != nil {
+					rawStops["nmbs"] = prevNMBSStops
+				}
+				if !refreshNMBS && hasPrevNMBSErr {
+					rawErrors["nmbs"] = prevNMBSErr
+				}
+				if !refreshArenaways && prevArenawaysStops != nil {
+					rawStops["arenaways"] = prevArenawaysStops
+				}
+				if !refreshArenaways && hasPrevArenawaysErr {
+					rawErrors["arenaways"] = prevArenawaysErr
+				}
 
 				if a.bahnClient != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
