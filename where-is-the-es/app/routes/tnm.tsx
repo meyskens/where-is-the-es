@@ -204,7 +204,6 @@ function SourceCard({ source, result, isLoading }: SourceCardProps) {
               <span>Train: <strong>{result.trainNumber}</strong></span>
               <span>Date: <strong>{result.date || "—"}</strong></span>
               <span>Stops: <strong>{result.stops?.length ?? 0}</strong></span>
-              <span>Realtime: <strong>{result.stops?.some((s) => s.isRealTime) ? "yes" : "no"}</strong></span>
               {!result.found && (
                 <span className="text-amber-600">not in cache</span>
               )}
