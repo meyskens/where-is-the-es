@@ -46,6 +46,7 @@ export interface DebugSourceResult {
     found: boolean;
     error?: string;
     stops?: DebugStop[];
+    rawJson?: string;
 }
 
 export interface DebugSourceInfo {

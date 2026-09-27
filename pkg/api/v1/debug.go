@@ -39,6 +39,7 @@ type DebugSourceResult struct {
 	Found       bool        `json:"found"`
 	Error       string      `json:"error,omitempty"`
 	Stops       []DebugStop `json:"stops,omitempty"`
+	RawJSON     string      `json:"rawJson,omitempty"`
 }
 
 func (a *APIV1) registerDebugRoutes(e *echo.Echo) {
@@ -174,6 +175,14 @@ func (a *APIV1) debugSource(c echo.Context) error {
 				}
 			} else {
 				result.Stops = rawStopsToDebugStops(raw, trip, ds)
+			}
+			// Surface the cached raw JSON (if any) for this source so the
+			// debug interface can show the upstream API response, e.g. the
+			// raw SBB trips-query output when no matching train was found.
+			if rawJSONs, hasRawJSON := a.rawJSONCache[service]; hasRawJSON {
+				if rawJSON, ok := rawJSONs[source]; ok && rawJSON != "" {
+					result.RawJSON = rawJSON
+				}
 			}
 		}
 	}

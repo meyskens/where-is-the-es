@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { apiService, type DebugSourceInfo, type DebugSourceResult, type DebugStop } from "~/service/api";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { AlertCircle, RefreshCw, Train, Glasses } from "lucide-react";
+import { AlertCircle, RefreshCw, Train, Glasses, ChevronDown } from "lucide-react";
 
 export function meta() {
   return [
@@ -215,6 +215,9 @@ function SourceCard({ source, result, isLoading }: SourceCardProps) {
             )}
           </div>
         )}
+        {source.available && result && result.rawJson && (
+          <RawJSONSection rawJson={result.rawJson} />
+        )}
         {source.available && !result && !isLoading && (
           <p className="text-sm text-gray-400">Loading cached data...</p>
         )}
@@ -225,6 +228,28 @@ function SourceCard({ source, result, isLoading }: SourceCardProps) {
 
 interface StopsTableProps {
   stops: DebugStop[];
+}
+
+function RawJSONSection({ rawJson }: { rawJson: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 border-t border-gray-200 pt-3">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        Raw JSON
+      </button>
+      {open && (
+        <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-700 whitespace-pre-wrap break-all">
+          {rawJson}
+        </pre>
+      )}
+    </div>
+  );
 }
 
 function StopsTable({ stops }: StopsTableProps) {

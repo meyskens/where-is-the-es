@@ -3,6 +3,7 @@ package europeansleeper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 
@@ -85,7 +86,10 @@ func EnhanceWithSBB(ctx context.Context, client *sbb.Client, trip *traindata.Tri
 	if err != nil {
 		if errors.Is(err, sbb.ErrNotFound) {
 			log.Println("SBB: no matching train for", trip.TrainNumber, "between", origin.StationName, "and", destination.StationName)
-			return 0, nil, nil
+			// Return ErrNotFound (not nil) so the caller can cache the
+			// error message and the raw trips JSON (available via
+			// client.LastRawTripsJSON) into the debug interface.
+			return 0, nil, fmt.Errorf("%w: no matching train for %s between %s and %s", sbb.ErrNotFound, trip.TrainNumber, origin.StationName, destination.StationName)
 		}
 		log.Println("Failed to fetch SBB timetable for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"), ":", err)
 		return 0, nil, err

@@ -10,8 +10,11 @@
 package sbb
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -138,6 +141,19 @@ type Client struct {
 	httpClient *http.Client
 	graphql    *graphql.Client
 	limiter    *rate.Limiter
+
+	// rawTripsJSON holds the most recent raw trips-query response body
+	// (pretty-printed). It is exposed via LastRawTripsJSON so the debug
+	// interface can show the raw SBB output when a train is not found.
+	rawTripsJSON string
+}
+
+// LastRawTripsJSON returns the raw JSON body of the most recent trips
+// query (pretty-printed), or the empty string if no trips query has run
+// yet. Used by the debug interface to surface the raw SBB response when a
+// train cannot be matched.
+func (c *Client) LastRawTripsJSON() string {
+	return c.rawTripsJSON
 }
 
 // Option configures a Client.
@@ -156,7 +172,7 @@ func WithHTTPClient(h *http.Client) Option {
 func WithEndpoint(u string) Option {
 	return func(c *Client) {
 		c.endpoint = strings.TrimRight(u, "/")
-		c.graphql = graphql.NewClient(c.endpoint)
+		c.graphql = graphql.NewClient(c.endpoint, graphql.WithHTTPClient(c.httpClient))
 	}
 }
 
@@ -170,6 +186,14 @@ func NewClient(opts ...Option) *Client {
 	for _, opt := range opts {
 		opt(c)
 	}
+	// Wrap the HTTP transport so we can capture the raw trips-query
+	// response body for the debug interface (e.g. when no matching
+	// train is found).
+	base := c.httpClient.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	c.httpClient.Transport = &recordingTransport{base: base, client: c}
 	if c.graphql == nil {
 		c.graphql = graphql.NewClient(c.endpoint, graphql.WithHTTPClient(c.httpClient))
 	}
@@ -352,7 +376,10 @@ func (c *Client) GetTimetable(ctx context.Context, trainNumber, originUIC, destU
 
 	leg, err := findLegByTrainNumber(resp.Trips.Trips, num)
 	if err != nil {
-		return nil, err
+		// Attach the raw trips JSON to the not-found error so callers can
+		// surface it in the debug interface. We keep ErrNotFound as the
+		// sentinel so errors.Is still works.
+		return nil, fmt.Errorf("%w (raw trips response: %s)", err, c.rawTripsJSON)
 	}
 
 	// The trips query only returns arrival/departure times at the leg
@@ -542,6 +569,48 @@ func (c *Client) run(ctx context.Context, query string, vars map[string]any, out
 // ErrNotFound is returned when no leg matching the train number is found in
 // the SBB trip results.
 var ErrNotFound = fmt.Errorf("sbb: train not found")
+
+// recordingTransport wraps an http.RoundTripper and stores the last response
+// body on the owning Client so the debug interface can surface the raw SBB
+// trips JSON when no matching train is found.
+type recordingTransport struct {
+	base   http.RoundTripper
+	client *Client
+}
+
+func (r *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := r.base.RoundTrip(req)
+	if err != nil || resp == nil {
+		return resp, err
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	if r.client != nil {
+		if pretty, perr := prettyJSON(body); perr == nil {
+			r.client.rawTripsJSON = pretty
+		} else {
+			r.client.rawTripsJSON = string(body)
+		}
+	}
+	return resp, nil
+}
+
+// prettyJSON re-indents a JSON document for human-readable debug output.
+func prettyJSON(b []byte) (string, error) {
+	var v any
+	if err := json.Unmarshal(b, &v); err != nil {
+		return "", err
+	}
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
 
 // stripPrefix removes any leading non-digit characters from a train number,
 // e.g. "EN400" -> "400".

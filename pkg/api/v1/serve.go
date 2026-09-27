@@ -30,6 +30,7 @@ type APIV1 struct {
 	baseTimetableCache map[Service]*traindata.Trip
 	rawStopsCache      map[Service]map[string][]traindata.Stop
 	rawStopsErrorCache map[Service]map[string]string
+	rawJSONCache       map[Service]map[string]string
 
 	refreshTimer         *time.Ticker
 	nmbsLastRefresh      time.Time
@@ -54,6 +55,7 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grappe
 		baseTimetableCache: make(map[Service]*traindata.Trip),
 		rawStopsCache:      make(map[Service]map[string][]traindata.Stop),
 		rawStopsErrorCache: make(map[Service]map[string]string),
+		rawJSONCache:       make(map[Service]map[string]string),
 		refreshTimer:       time.NewTicker(1 * time.Minute),
 		tcURL:              tcURL,
 	}
@@ -259,6 +261,8 @@ func (a *APIV1) refreshCache() {
 				a.rawStopsCache[service] = rawStops
 				rawErrors := make(map[string]string)
 				a.rawStopsErrorCache[service] = rawErrors
+				rawJSONs := make(map[string]string)
+				a.rawJSONCache[service] = rawJSONs
 
 				if !refreshNMBS && prevNMBSStops != nil {
 					rawStops["nmbs"] = prevNMBSStops
@@ -350,6 +354,13 @@ func (a *APIV1) refreshCache() {
 					}
 					if raw != nil {
 						rawStops["sbb"] = raw
+					}
+					// Surface the raw SBB trips-query JSON (captured by the
+					// SBB client's recording transport) so the debug
+					// interface can show what the planner returned, even when
+					// no matching train was found.
+					if rawJSON := a.sbbClient.LastRawTripsJSON(); rawJSON != "" {
+						rawJSONs["sbb"] = rawJSON
 					}
 					cancel()
 				}
