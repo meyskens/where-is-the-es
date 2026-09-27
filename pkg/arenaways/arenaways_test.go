@@ -12,6 +12,9 @@ import (
 //go:embed testdata_train400.html
 var testTrain400HTML string
 
+//go:embed testdata_train401.html
+var testTrain401HTML string
+
 func mustParseTime(t *testing.T, timeStr string) time.Time {
 	t.Helper()
 	parsedTime, err := time.Parse("15:04", timeStr)
@@ -117,6 +120,124 @@ func TestParseTimetable_Train400(t *testing.T) {
 			DepartureTime:     time.Time{},
 			RealDepartureTime: time.Time{},
 			IsRealTime:        false,
+		},
+	}
+
+	assert.Equal(t, len(expected), len(stops), "expected %d stops, got %d", len(expected), len(stops))
+	if len(stops) != len(expected) {
+		t.Fatalf("stopping comparison — stop count mismatch")
+	}
+
+	for i, want := range expected {
+		got := stops[i]
+		assert.Equal(t, want.StationName, got.StationName, "stop %d (%s) StationName", i, want.StationName)
+		assert.True(t, got.ArrivalTime.Equal(want.ArrivalTime), "stop %d (%s) ArrivalTime: want %v, got %v", i, want.StationName, want.ArrivalTime, got.ArrivalTime)
+		assert.True(t, got.RealArrivalTime.Equal(want.RealArrivalTime), "stop %d (%s) RealArrivalTime: want %v, got %v", i, want.StationName, want.RealArrivalTime, got.RealArrivalTime)
+		assert.True(t, got.DepartureTime.Equal(want.DepartureTime), "stop %d (%s) DepartureTime: want %v, got %v", i, want.StationName, want.DepartureTime, got.DepartureTime)
+		assert.True(t, got.RealDepartureTime.Equal(want.RealDepartureTime), "stop %d (%s) RealDepartureTime: want %v, got %v", i, want.StationName, want.RealDepartureTime, got.RealDepartureTime)
+		assert.Equal(t, want.IsRealTime, got.IsRealTime, "stop %d (%s) IsRealTime", i, want.StationName)
+	}
+}
+
+func TestParseTimetable_Train401(t *testing.T) {
+	// Train 401 runs Brussels -> Milan. The terminus (MILANO PORTA
+	// GARIBALDI) has not yet been reached: the "Effettivo" value is "-"
+	// and a sibling <span class="text-red-500">+70 min</span> carries the
+	// predicted delay. The real arrival time must therefore be computed
+	// as the scheduled arrival (11:40) plus the predicted delay (70 min)
+	// = 12:50, and the stop must be flagged as real-time.
+	f := &ArenaWaysFetcher{}
+
+	stops, err := f.ParseTimetable([]byte(testTrain401HTML))
+	if err != nil {
+		t.Fatalf("ParseTimetable() unexpected error: %v", err)
+	}
+
+	expected := []traindata.Stop{
+		{
+			StationName:       "BRUXELLES-MIDI",
+			ArrivalTime:       time.Time{},
+			RealArrivalTime:   time.Time{},
+			DepartureTime:     mustParseTime(t, "19:06"),
+			RealDepartureTime: mustParseTime(t, "19:06"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "VERVIES",
+			ArrivalTime:       mustParseTime(t, "20:35"),
+			RealArrivalTime:   mustParseTime(t, "20:35"),
+			DepartureTime:     mustParseTime(t, "20:37"),
+			RealDepartureTime: mustParseTime(t, "20:37"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "AACHEN HBF",
+			ArrivalTime:       mustParseTime(t, "21:07"),
+			RealArrivalTime:   mustParseTime(t, "21:07"),
+			DepartureTime:     mustParseTime(t, "21:13"),
+			RealDepartureTime: mustParseTime(t, "21:13"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "KOLN HBF",
+			ArrivalTime:       mustParseTime(t, "21:56"),
+			RealArrivalTime:   mustParseTime(t, "21:56"),
+			DepartureTime:     mustParseTime(t, "22:07"),
+			RealDepartureTime: mustParseTime(t, "22:07"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "ARTH GOLDAU",
+			ArrivalTime:       mustParseTime(t, "06:33"),
+			RealArrivalTime:   mustParseTime(t, "06:33"),
+			DepartureTime:     mustParseTime(t, "06:35"),
+			RealDepartureTime: mustParseTime(t, "06:35"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "GOSCHENEN",
+			ArrivalTime:       mustParseTime(t, "07:30"),
+			RealArrivalTime:   mustParseTime(t, "07:30"),
+			DepartureTime:     mustParseTime(t, "07:58"),
+			RealDepartureTime: mustParseTime(t, "07:58"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "BELLINZONA",
+			ArrivalTime:       mustParseTime(t, "09:06"),
+			RealArrivalTime:   mustParseTime(t, "09:06"),
+			DepartureTime:     mustParseTime(t, "09:08"),
+			RealDepartureTime: mustParseTime(t, "09:08"),
+			IsRealTime:        true,
+		},
+		{
+			StationName:       "LUGANO",
+			ArrivalTime:       mustParseTime(t, "09:40"),
+			RealArrivalTime:   mustParseTime(t, "09:40"),
+			DepartureTime:     mustParseTime(t, "09:42"),
+			RealDepartureTime: mustParseTime(t, "09:42"),
+			IsRealTime:        true,
+		},
+		{
+			// Already-reached stop with a real "Effettivo" time AND a delay
+			// span. The real time must take precedence over the predicted
+			// delay span.
+			StationName:       "COMO S.GIOVANNI",
+			ArrivalTime:       mustParseTime(t, "10:41"),
+			RealArrivalTime:   mustParseTime(t, "12:02"),
+			DepartureTime:     mustParseTime(t, "10:43"),
+			RealDepartureTime: mustParseTime(t, "12:09"),
+			IsRealTime:        true,
+		},
+		{
+			// Terminus not yet reached: Effettivo is "-" with a "+70 min"
+			// predicted delay span. Real arrival = 11:40 + 70 min = 12:50.
+			StationName:       "MILANO PORTA GARIBALDI",
+			ArrivalTime:       mustParseTime(t, "11:40"),
+			RealArrivalTime:   mustParseTime(t, "12:50"),
+			DepartureTime:     time.Time{},
+			RealDepartureTime: time.Time{},
+			IsRealTime:        true,
 		},
 	}
 

@@ -27,7 +27,8 @@ Only Italian stations (UIC country prefix 83) are enriched.
 */
 
 var (
-	timeRegexp = regexp.MustCompile(`\b([0-2]?\d:[0-5]\d)\b`)
+	timeRegexp  = regexp.MustCompile(`\b([0-2]?\d:[0-5]\d)\b`)
+	delayRegexp = regexp.MustCompile(`([0-9]+)\s*min`)
 )
 
 // ErrNoTrain is returned when Arenaways has no record of the requested train.
@@ -157,6 +158,11 @@ func (f *ArenaWaysFetcher) ParseTimetable(body []byte) ([]traindata.Stop, error)
 // scheduled-time <p class="text-sm">Arrivo:/Partenza:</p> followed by an
 // optional real-time <p class="text-sm text-gray-500">Effettivo: ...</p>.
 // The Effettivo row applies to the most recently seen Arrivo/Partenza.
+//
+// When the train has not yet reached a stop, the "Effettivo" value is "-"
+// and a sibling <span class="text-sm text-red-500">+N min</span> carries the
+// predicted delay. In that case the real time is computed as the scheduled
+// time plus the predicted delay minutes.
 func (f *ArenaWaysFetcher) parseStopDepth(z *html.Tokenizer) (traindata.Stop, error) {
 	var stop traindata.Stop
 	depth := 1 // we are already inside the stop div
@@ -237,6 +243,39 @@ func (f *ArenaWaysFetcher) parseStopDepth(z *html.Tokenizer) (traindata.Stop, er
 					continue
 				}
 			}
+
+			// Predicted delay: <span class="text-sm text-red-500">+N min</span>
+			// Appears when the train has not yet reached the stop. The "+N"
+			// value is split across React comment placeholders, so we read
+			// the whole text content and extract the minutes. We only apply
+			// the predicted delay when no real "Effettivo" time was set for
+			// this field (i.e. Effettivo was "-"), otherwise the real time
+			// already takes precedence.
+			if t.Data == "span" {
+				cls := ""
+				for _, a := range t.Attr {
+					if a.Key == "class" {
+						cls = " " + a.Val + " "
+						break
+					}
+				}
+				if strings.Contains(cls, " text-red-500 ") {
+					text, _ := readTextContent(z)
+					if mins := parseDelayMinutes(text); mins > 0 {
+						switch lastField {
+						case "arrival":
+							if stop.RealArrivalTime.Equal(stop.ArrivalTime) && !stop.ArrivalTime.IsZero() {
+								applyPredictedDelay(&stop, "arrival", mins)
+							}
+						case "departure":
+							if stop.RealDepartureTime.Equal(stop.DepartureTime) && !stop.DepartureTime.IsZero() {
+								applyPredictedDelay(&stop, "departure", mins)
+							}
+						}
+					}
+					continue
+				}
+			}
 		}
 
 		if tt == html.EndTagToken && z.Token().Data == "div" {
@@ -248,16 +287,6 @@ func (f *ArenaWaysFetcher) parseStopDepth(z *html.Tokenizer) (traindata.Stop, er
 	}
 
 	return stop, nil
-}
-
-// stripLabel removes the leading label (e.g. "Arrivo:", "Partenza:")
-// from a time string and returns the time portion.
-func stripLabel(s string) string {
-	idx := strings.Index(s, ":")
-	if idx < 0 {
-		return s
-	}
-	return strings.TrimSpace(s[idx+1:])
 }
 
 // parseTimeString extracts a HH:MM time from a string and returns it
@@ -272,6 +301,55 @@ func parseTimeString(s string) time.Time {
 		return time.Time{}
 	}
 	return t
+}
+
+// stripLabel removes the leading label (e.g. "Arrivo:", "Partenza:")
+// from a time string and returns the time portion.
+func stripLabel(s string) string {
+	idx := strings.Index(s, ":")
+	if idx < 0 {
+		return s
+	}
+	return strings.TrimSpace(s[idx+1:])
+}
+
+// parseDelayMinutes extracts the predicted delay in minutes from a delay
+// indicator span such as "+81 min" (the number may be split across React
+// comment placeholders, which readTextContent already strips). Returns 0
+// when no delay is present.
+func parseDelayMinutes(s string) int {
+	match := delayRegexp.FindStringSubmatch(s)
+	if len(match) < 2 {
+		return 0
+	}
+	n := 0
+	for _, r := range match[1] {
+		if r < '0' || r > '9' {
+			return 0
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
+}
+
+// applyPredictedDelay sets the real arrival/departure time for the given
+// field to the scheduled time plus the predicted delay minutes and marks
+// the stop as having real-time data. It is used when the train has not yet
+// reached the stop and Arenaways only reports a predicted delay.
+func applyPredictedDelay(stop *traindata.Stop, field string, minutes int) {
+	d := time.Duration(minutes) * time.Minute
+	switch field {
+	case "arrival":
+		if !stop.ArrivalTime.IsZero() {
+			stop.RealArrivalTime = stop.ArrivalTime.Add(d)
+			stop.IsRealTime = true
+		}
+	case "departure":
+		if !stop.DepartureTime.IsZero() {
+			stop.RealDepartureTime = stop.DepartureTime.Add(d)
+			stop.IsRealTime = true
+		}
+	}
 }
 
 // readTextContent reads all text content until the closing tag of the
