@@ -54,6 +54,7 @@ const uicNumberOverrides: Record<string, string> = {
   "51 80 22-91 711-7": '/images/Bimz264-mm-a.gif',
   "51 80 84-90 702-2": '/images/Bimz264-mm-a.gif',
   "51 80 22-91 293-6": '/images/Bimz264-mm-a.gif',
+  "50 80 22-91 309-0": '/images/Bimz264-mm-a.gif',
   "61 80 50-71 202-4": '/images/Bvcmz248-euro-chouchette-a.webp',
   "56 80 50-71 118-9": '/images/Bvcmz248-euro-chouchette-a.webp',
   "61 80 50-71 203-2": '/images/Bvcmz248-euro-chouchette-a.webp',
