@@ -14,6 +14,7 @@ import (
 	"github.com/meyskens/where-is-the-es/pkg/grapper"
 	"github.com/meyskens/where-is-the-es/pkg/nmbs"
 	"github.com/meyskens/where-is-the-es/pkg/ns"
+	"github.com/meyskens/where-is-the-es/pkg/sbb"
 	"github.com/meyskens/where-is-the-es/pkg/sncfgc"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
@@ -43,9 +44,10 @@ type APIV1 struct {
 	arenawaysFetcher *arenaways.ArenaWaysFetcher
 	grapperClient    *grapper.Client
 	sncfgcClient     *sncfgc.Client
+	sbbClient        *sbb.Client
 }
 
-func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string, sbbEnabled bool) *APIV1 {
 	a := &APIV1{
 		compositionCache:   make(map[string]traindata.Composition),
 		timetableCache:     make(map[Service]*traindata.Trip),
@@ -81,6 +83,9 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grappe
 	}
 	if sncfgcSubscriptionKey != "" {
 		a.sncfgcClient = sncfgc.NewClient(sncfgcSubscriptionKey)
+	}
+	if sbbEnabled {
+		a.sbbClient = sbb.NewClient()
 	}
 	return a
 }
@@ -333,6 +338,18 @@ func (a *APIV1) refreshCache() {
 					}
 					if raw != nil {
 						rawStops["sncfgc"] = raw
+					}
+					cancel()
+				}
+				if a.sbbClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, raw, err := europeansleeper.EnhanceWithSBB(ctx, a.sbbClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with SBB for train", train, "on date", date, ":", err)
+						rawErrors["sbb"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["sbb"] = raw
 					}
 					cancel()
 				}

@@ -60,6 +60,7 @@ var sourceToDataSource = map[string]traindata.DataSource{
 	"arenaways": traindata.DataSourceArenaways,
 	"grapper":   traindata.DataSourceSZ,
 	"sncfgc":    traindata.DataSourceSNCFGC,
+	"sbb":       traindata.DataSourceSBB,
 }
 
 // sourceInfo describes a data source for the /api/debug/sources listing.
@@ -79,6 +80,7 @@ func (a *APIV1) debugSources(c echo.Context) error {
 		{ID: "arenaways", Name: "Arenaways", Available: a.arenawaysFetcher != nil},
 		{ID: "grapper", Name: "GRAPP (CD/SŽ)", Available: a.grapperClient != nil},
 		{ID: "sncfgc", Name: "SNCF Gares & Connexions", Available: a.sncfgcClient != nil},
+		{ID: "sbb", Name: "SBB CFF FFS", Available: a.sbbClient != nil},
 	}
 	return c.JSON(http.StatusOK, sources)
 }

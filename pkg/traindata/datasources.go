@@ -15,6 +15,7 @@ const (
 	DataSourceSZ
 	DataSourceSNCFGC
 	DataSourceArenaways
+	DataSourceSBB
 )
 
 func (d DataSource) String() string {
@@ -35,6 +36,8 @@ func (d DataSource) String() string {
 		return "sncf-gc"
 	case DataSourceArenaways:
 		return "arenaways"
+	case DataSourceSBB:
+		return "sbb"
 	default:
 		return "unknown"
 	}

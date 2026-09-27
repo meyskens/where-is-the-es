@@ -32,6 +32,7 @@ type serveCmdOptions struct {
 	FlareSolverrURL       string
 	GrapperURL            string
 	SNCFGCSubscriptionKey string
+	SBBEnabled            bool
 }
 
 // NewServeCmd generates the `serve` command
@@ -53,6 +54,7 @@ func NewServeCmd() *cobra.Command {
 	c.Flags().StringVar(&s.FlareSolverrURL, "flaresolverr-url", os.Getenv("FLARESOLVERR_URL"), "FlareSolverr base URL used for NMBS realtime scraping, defaults to $FLARESOLVERR_URL")
 	c.Flags().StringVar(&s.GrapperURL, "grapper-url", os.Getenv("GRAPPER_URL"), "Grapper base URL used for Czech realtime data, defaults to $GRAPPER_URL")
 	c.Flags().StringVar(&s.SNCFGCSubscriptionKey, "sncfgc-subscription-key", os.Getenv("SNCFGC_SUBSCRIPTION_KEY"), "SNCF Gares & Connexions API subscription key (Ocp-Apim-Subscription-Key), defaults to $SNCFGC_SUBSCRIPTION_KEY")
+	c.Flags().BoolVar(&s.SBBEnabled, "sbb-enabled", os.Getenv("SBB_ENABLED") != "false", "Enable the SBB GraphQL trip-search enhancer. Defaults to true; set $SBB_ENABLED=false to disable.")
 
 	return c
 }
@@ -72,7 +74,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL, s.GrapperURL, s.SNCFGCSubscriptionKey)
+	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL, s.GrapperURL, s.SNCFGCSubscriptionKey, s.SBBEnabled)
 	v1.Register(e)
 
 	// Serve frontend static files
