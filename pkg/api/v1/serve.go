@@ -15,6 +15,7 @@ import (
 	"github.com/meyskens/where-is-the-es/pkg/nmbs"
 	"github.com/meyskens/where-is-the-es/pkg/ns"
 	"github.com/meyskens/where-is-the-es/pkg/sbb"
+	"github.com/meyskens/where-is-the-es/pkg/sbbinternal"
 	"github.com/meyskens/where-is-the-es/pkg/sncfgc"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
 )
@@ -38,17 +39,18 @@ type APIV1 struct {
 
 	initDone bool
 
-	tcURL            string
-	bahnClient       *bahn.Client
-	nsClient         *ns.Client
-	nmbsFetcher      *nmbs.NMBSFetcher
-	arenawaysFetcher *arenaways.ArenaWaysFetcher
-	grapperClient    *grapper.Client
-	sncfgcClient     *sncfgc.Client
-	sbbClient        *sbb.Client
+	tcURL             string
+	bahnClient        *bahn.Client
+	nsClient          *ns.Client
+	nmbsFetcher       *nmbs.NMBSFetcher
+	arenawaysFetcher  *arenaways.ArenaWaysFetcher
+	grapperClient     *grapper.Client
+	sncfgcClient      *sncfgc.Client
+	sbbClient         *sbb.Client
+	sbbInternalClient *sbbinternal.Client
 }
 
-func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string, sbbEnabled bool) *APIV1 {
+func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grapperURL, sncfgcSubscriptionKey string, sbbEnabled bool, sbbInternalEndpoint, sbbInternalRequestorUUID string) *APIV1 {
 	a := &APIV1{
 		compositionCache:   make(map[string]traindata.Composition),
 		timetableCache:     make(map[Service]*traindata.Trip),
@@ -88,6 +90,12 @@ func New(tcURL, dbAPIKey, dbClientID, nsSubscriptionKey, flareSolverrURL, grappe
 	}
 	if sbbEnabled {
 		a.sbbClient = sbb.NewClient()
+	}
+	if sbbInternalEndpoint != "" {
+		a.sbbInternalClient = sbbinternal.NewClient(
+			sbbinternal.WithEndpoint(sbbInternalEndpoint),
+			sbbinternal.WithRequestorUUID(sbbInternalRequestorUUID),
+		)
 	}
 	return a
 }
@@ -361,6 +369,25 @@ func (a *APIV1) refreshCache() {
 					// no matching train was found.
 					if rawJSON := a.sbbClient.LastRawTripsJSON(); rawJSON != "" {
 						rawJSONs["sbb"] = rawJSON
+					}
+					cancel()
+				}
+				if a.sbbInternalClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					_, raw, err := europeansleeper.EnhanceWithSBBInternal(ctx, a.sbbInternalClient, trip)
+					if err != nil {
+						log.Println("Failed to enhance trip with SBB Internal for train", train, "on date", date, ":", err)
+						rawErrors["sbb-internal"] = err.Error()
+					}
+					if raw != nil {
+						rawStops["sbb-internal"] = raw
+					}
+					// Surface the raw SBB Internal API JSON (captured by
+					// the client) so the debug interface can show the
+					// upstream response, even when no matching train was
+					// found.
+					if rawJSON := a.sbbInternalClient.LastRawJSON(); rawJSON != "" {
+						rawJSONs["sbb-internal"] = rawJSON
 					}
 					cancel()
 				}

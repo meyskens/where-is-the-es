@@ -23,16 +23,18 @@ func init() {
 }
 
 type serveCmdOptions struct {
-	BindAddr              string
-	Port                  int
-	TCURL                 string
-	DBAPIKey              string
-	DBClientID            string
-	NSSubscriptionKey     string
-	FlareSolverrURL       string
-	GrapperURL            string
-	SNCFGCSubscriptionKey string
-	SBBEnabled            bool
+	BindAddr                 string
+	Port                     int
+	TCURL                    string
+	DBAPIKey                 string
+	DBClientID               string
+	NSSubscriptionKey        string
+	FlareSolverrURL          string
+	GrapperURL               string
+	SNCFGCSubscriptionKey    string
+	SBBEnabled               bool
+	SBBInternalEndpoint      string
+	SBBInternalRequestorUUID string
 }
 
 // NewServeCmd generates the `serve` command
@@ -55,6 +57,8 @@ func NewServeCmd() *cobra.Command {
 	c.Flags().StringVar(&s.GrapperURL, "grapper-url", os.Getenv("GRAPPER_URL"), "Grapper base URL used for Czech realtime data, defaults to $GRAPPER_URL")
 	c.Flags().StringVar(&s.SNCFGCSubscriptionKey, "sncfgc-subscription-key", os.Getenv("SNCFGC_SUBSCRIPTION_KEY"), "SNCF Gares & Connexions API subscription key (Ocp-Apim-Subscription-Key), defaults to $SNCFGC_SUBSCRIPTION_KEY")
 	c.Flags().BoolVar(&s.SBBEnabled, "sbb-enabled", os.Getenv("SBB_ENABLED") != "false", "Enable the SBB GraphQL trip-search enhancer. Defaults to true; set $SBB_ENABLED=false to disable.")
+	c.Flags().StringVar(&s.SBBInternalEndpoint, "sbb-internal-endpoint", os.Getenv("SBB_INTERNAL_ENDPOINT"), "SBB internal API gateway base URL Defaults to $SBB_INTERNAL_ENDPOINT.")
+	c.Flags().StringVar(&s.SBBInternalRequestorUUID, "sbb-internal-requestor-uuid", os.Getenv("SBB_INTERNAL_REQUESTOR_UUID"), "Requestor-UUID header value for the SBB internal API. The Referer/Origin is derived from this as https://<uuid>. Defaults to $SBB_INTERNAL_REQUESTOR_UUID.")
 
 	return c
 }
@@ -74,7 +78,7 @@ func (s *serveCmdOptions) RunE(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.CORS())
 
 	// Register API routes
-	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL, s.GrapperURL, s.SNCFGCSubscriptionKey, s.SBBEnabled)
+	v1 := apiv1.New(s.TCURL, s.DBAPIKey, s.DBClientID, s.NSSubscriptionKey, s.FlareSolverrURL, s.GrapperURL, s.SNCFGCSubscriptionKey, s.SBBEnabled, s.SBBInternalEndpoint, s.SBBInternalRequestorUUID)
 	v1.Register(e)
 
 	// Serve frontend static files

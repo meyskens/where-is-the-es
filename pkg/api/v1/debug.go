@@ -55,13 +55,14 @@ func (a *APIV1) registerDebugRoutes(e *echo.Echo) {
 // handled specially — they return the full base / calculated trip
 // respectively rather than filtering by DataSources.
 var sourceToDataSource = map[string]traindata.DataSource{
-	"bahn":      traindata.DataSourceDB,
-	"ns":        traindata.DataSourceNS,
-	"nmbs":      traindata.DataSourceNMBS,
-	"arenaways": traindata.DataSourceArenaways,
-	"grapper":   traindata.DataSourceSZ,
-	"sncfgc":    traindata.DataSourceSNCFGC,
-	"sbb":       traindata.DataSourceSBB,
+	"bahn":         traindata.DataSourceDB,
+	"ns":           traindata.DataSourceNS,
+	"nmbs":         traindata.DataSourceNMBS,
+	"arenaways":    traindata.DataSourceArenaways,
+	"grapper":      traindata.DataSourceSZ,
+	"sncfgc":       traindata.DataSourceSNCFGC,
+	"sbb":          traindata.DataSourceSBB,
+	"sbb-internal": traindata.DataSourceSBBInternal,
 }
 
 // sourceInfo describes a data source for the /api/debug/sources listing.
@@ -82,6 +83,7 @@ func (a *APIV1) debugSources(c echo.Context) error {
 		{ID: "grapper", Name: "GRAPP (CD/SŽ)", Available: a.grapperClient != nil},
 		{ID: "sncfgc", Name: "SNCF Gares & Connexions", Available: a.sncfgcClient != nil},
 		{ID: "sbb", Name: "SBB CFF FFS", Available: a.sbbClient != nil},
+		{ID: "sbb-internal", Name: "SBB Internal", Available: a.sbbInternalClient != nil},
 	}
 	return c.JSON(http.StatusOK, sources)
 }
