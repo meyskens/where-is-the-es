@@ -5,9 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/meyskens/where-is-the-es/pkg/sbbinternal"
 	"github.com/meyskens/where-is-the-es/pkg/traindata"
+)
+
+const (
+	sbbInternalStationNameSimilarityThreshold = 0.95
+	sbbInternalStationMatchRateThreshold      = 0.95
 )
 
 // EnhanceWithSBBInternal fills realtime arrival/departure information on
@@ -46,83 +52,52 @@ func EnhanceWithSBBInternal(ctx context.Context, client *sbbinternal.Client, tri
 
 	log.Println("Fetched", len(sbbTrip.Stops), "SBB Internal stops for train", trip.TrainNumber, "on date", trip.Date.Format("2006-01-02"))
 
-	// Build lookup maps by UIC and normalized name for matching.
-	sbbByUIC := make(map[int]traindata.Stop, len(sbbTrip.Stops))
-	sbbByName := make(map[string]traindata.Stop, len(sbbTrip.Stops))
-	sbbEntries := make([]struct {
-		normalized string
-		stop       traindata.Stop
-	}, 0, len(sbbTrip.Stops))
-	for _, s := range sbbTrip.Stops {
-		if s.StationUIC != 0 {
-			sbbByUIC[s.StationUIC] = s
-		}
-		if s.StationName != "" {
-			norm := normalizeStationName(s.StationName)
-			if norm != "" {
-				if _, ok := sbbByName[norm]; !ok {
-					sbbByName[norm] = s
-				}
-				sbbEntries = append(sbbEntries, struct {
-					normalized string
-					stop       traindata.Stop
-				}{normalized: norm, stop: s})
-			}
-		}
-	}
-
-	enrichedStops := 0
+	// Verify station names before using any of the SBB data as train number 400 is re-used
+	matchedStops := make(map[int]traindata.Stop, swissStops)
 	for i := range trip.Stops {
 		if !isSwissUIC(trip.Stops[i].StationUIC) {
 			continue
 		}
 
-		var s traindata.Stop
-		var ok bool
-
-		// Prefer matching by UIC code.
-		if trip.Stops[i].StationUIC != 0 {
-			s, ok = sbbByUIC[trip.Stops[i].StationUIC]
-		}
-		if !ok {
-			key := normalizeStationName(trip.Stops[i].StationName)
-			s, ok = sbbByName[key]
-			if !ok {
-				bestScore := 0.0
-				bestName := ""
-				for _, e := range sbbEntries {
-					score := stringSimilarity(key, e.normalized)
-					if score > bestScore {
-						bestScore = score
-						bestName = e.stop.StationName
-						s = e.stop
-					}
-				}
-				if bestScore < 0.6 {
-					log.Println("No SBB Internal name match for trip stop", trip.Stops[i].StationName, "(UIC", trip.Stops[i].StationUIC, ") on train", trip.TrainNumber, "best candidate:", bestName, "score:", bestScore)
-					continue
-				}
+		key := normalizeStationName(trip.Stops[i].StationName)
+		bestScore := 0.0
+		bestStop := traindata.Stop{}
+		for _, candidate := range sbbTrip.Stops {
+			score := stringSimilarity(key, normalizeStationName(candidate.StationName))
+			if score > bestScore {
+				bestScore = score
+				bestStop = candidate
 			}
+		}
+		if bestScore < sbbInternalStationNameSimilarityThreshold {
+			log.Println("No SBB Internal name match for trip stop", trip.Stops[i].StationName, "(UIC", trip.Stops[i].StationUIC, ") on train", trip.TrainNumber, "best candidate:", bestStop.StationName, "score:", bestScore)
+			continue
+		}
+		matchedStops[i] = bestStop
+	}
+
+	minimumMatches := int(math.Ceil(float64(swissStops) * sbbInternalStationMatchRateThreshold))
+	if len(matchedStops) < minimumMatches {
+		return 0, sbbTrip.Stops, fmt.Errorf("SBB Internal station-name match below 95%%: matched %d of %d Swiss stops", len(matchedStops), swissStops)
+	}
+
+	enrichedStops := 0
+	for i := range trip.Stops {
+		s, ok := matchedStops[i]
+		if !ok {
+			continue
 		}
 
 		// SBB Internal has priority over SBB public. Overwrite the
-		// realtime fields regardless of whether SBB public already set
-		// them.
-		if !s.RealArrivalTime.IsZero() {
+		if s.IsRealTime && !s.RealArrivalTime.IsZero() {
 			trip.Stops[i].RealArrivalTime = s.RealArrivalTime
 		} else if !trip.Stops[i].ArrivalTime.IsZero() {
 			trip.Stops[i].RealArrivalTime = trip.Stops[i].ArrivalTime
 		}
-		if !s.RealDepartureTime.IsZero() {
+		if s.IsRealTime && !s.RealDepartureTime.IsZero() {
 			trip.Stops[i].RealDepartureTime = s.RealDepartureTime
 		} else if !trip.Stops[i].DepartureTime.IsZero() {
 			trip.Stops[i].RealDepartureTime = trip.Stops[i].DepartureTime
-		}
-		if !s.ArrivalTime.IsZero() {
-			trip.Stops[i].ArrivalTime = s.ArrivalTime
-		}
-		if !s.DepartureTime.IsZero() {
-			trip.Stops[i].DepartureTime = s.DepartureTime
 		}
 		if s.RealPlatform != "" {
 			trip.Stops[i].RealPlatform = s.RealPlatform

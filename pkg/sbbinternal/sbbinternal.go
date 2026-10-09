@@ -320,8 +320,6 @@ func haltestellenToTrip(haltestellen []haltstelle, trainNumber string, date time
 			} else if h.Ankunftszeiten.Erw != "" {
 				stop.RealArrivalTime = parseSBBTime(h.Ankunftszeiten.Erw)
 				stop.IsRealTime = true
-			} else if !stop.ArrivalTime.IsZero() {
-				stop.RealArrivalTime = stop.ArrivalTime
 			}
 		}
 
@@ -335,8 +333,6 @@ func haltestellenToTrip(haltestellen []haltstelle, trainNumber string, date time
 			} else if h.Abfahrtszeiten.Erw != "" {
 				stop.RealDepartureTime = parseSBBTime(h.Abfahrtszeiten.Erw)
 				stop.IsRealTime = true
-			} else if !stop.DepartureTime.IsZero() {
-				stop.RealDepartureTime = stop.DepartureTime
 			}
 		}
 
