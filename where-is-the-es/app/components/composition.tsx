@@ -21,14 +21,14 @@ const vehicleTypeToImage: Record<string, string> = {
 const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
   "474": {
     Locomotive: '/images/br188-tcs.webp',
-    Sleeper: '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
+    Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
     Couchette: '/images/Bvcmz-RDC-a.webp',
     Seats: '/images/Bvcmz-RDC-a.webp',
     default: '/images/Bvcmz-RDC-a.webp',
   },
   "475": {
     Locomotive: '/images/br188-tcs.webp',
-    Sleeper: '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
+    Sleeper: '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
     Couchette: '/images/Bvcmz-RDC-a.webp',
     Seats: '/images/Bvcmz-RDC-a.webp',
     default: '/images/Bvcmz-RDC-a.webp',
@@ -46,11 +46,11 @@ const trainImageOverrides: Record<string, Partial<Record<string, string>>> = {
 };
 
 const uicNumberOverrides: Record<string, string> = {
-  "61 81 71-71 463-6": '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
-  "61 81 71-71 462-8": '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
-  "61 81 71-71 455-2": '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
-  "61 81 71-71 456-0": '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
-  "61 81 71-71 457-8": '/images/LABmz-7171-AB33-RDC_TCS-a.webp',
+  "61 81 71-71 463-6": '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
+  "61 81 71-71 462-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
+  "61 81 71-71 455-2": '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
+  "61 81 71-71 456-0": '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
+  "61 81 71-71 457-8": '/images/WLABmz-7171-AB33-RDC_TCS-a.webp',
   "51 80 22-91 711-7": '/images/Bimz264.webp',
   "51 80 84-90 702-2": '/images/Bimz264.webp',
   "51 80 22-91 293-6": '/images/Bimz264.webp',
